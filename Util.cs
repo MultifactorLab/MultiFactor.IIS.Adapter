@@ -1,0 +1,106 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Security.Cryptography;
+using System.Web.Script.Serialization;
+
+namespace MultiFactor.IIS.Adapter
+{
+    public static class Util
+    {
+        public static string Base64UrlEncode(byte[] arg)
+        {
+            if (arg == null)
+            {
+                throw new ArgumentNullException(nameof(arg));
+            }
+
+            string s = Convert.ToBase64String(arg); // Regular base64 encoder
+            s = s.Split('=')[0]; // Remove any trailing '='s
+            s = s.Replace('+', '-'); // 62nd char of encoding
+            s = s.Replace('/', '_'); // 63rd char of encoding
+            return s;
+        }
+        
+        public static byte[] Base64UrlDecode(string arg)
+        {
+            if (string.IsNullOrEmpty(arg))
+            {
+                throw new ArgumentNullException(nameof(arg));
+            }
+            
+            string s = arg;
+            s = s.Replace('-', '+'); // 62nd char of encoding
+            s = s.Replace('_', '/'); // 63rd char of encoding
+            switch (s.Length % 4) // Pad with trailing '='s
+            {
+                case 0: break; // No pad chars in this case
+                case 2: s += "=="; break; // Two pad chars
+                case 3: s += "="; break; // One pad char
+                default:
+                    throw new System.Exception("Illegal base64url string!");
+            }
+            return Convert.FromBase64String(s); // Standard base64 decoder
+        }
+
+        public static byte[] HMACSHA256(byte[] key, byte[] message)
+        {
+            using (var hmac = new HMACSHA256(key))
+            {
+                return hmac.ComputeHash(message);
+            }
+        }
+
+        public static DateTime UnixTimeStampToDateTime(long unixTimeStamp)
+        {
+            var origin = new DateTime(1970, 1, 1, 0, 0, 0, 0);
+            return origin.AddSeconds(unixTimeStamp);
+        }
+
+        public static string JsonSerialize(object content)
+        {
+            if (content == null)
+            {
+                throw new ArgumentNullException(nameof(content));
+            }
+            
+            var seriailizer = new JavaScriptSerializer();
+            return seriailizer.Serialize(content);
+        }
+
+        public static T JsonDeserialize<T>(string json)
+        {
+            if (string.IsNullOrEmpty(json))
+            {
+                throw new ArgumentNullException(nameof(json));
+            }
+
+            var seriailizer = new JavaScriptSerializer();
+            return seriailizer.Deserialize<T>(json);
+        }
+
+        public static IDictionary<string, object> JsonToDictionary(string json)
+        {
+            //simple parser for JWT body
+
+            if (string.IsNullOrEmpty(json))
+            {
+                throw new ArgumentNullException(nameof(json));
+            }
+
+            var ret = new Dictionary<string, object>();
+
+            var array = json.Trim(new[] { '{', '}' }).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
+            
+            foreach(var element in array)
+            {
+                var splitterPosition = element.IndexOf(':');
+                var key = element.Substring(0, splitterPosition);
+                var value = element.Substring(splitterPosition + 1);
+
+                ret.Add(key.Trim(new[] { '"' }), value.Trim(new[] { '"' }).Replace(@"\\", @"\"));
+            }
+
+            return ret;
+        }
+    }
+}
