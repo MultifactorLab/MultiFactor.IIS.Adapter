@@ -57,6 +57,12 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
+            //language selection page
+            if (path.Contains("/languageselection.aspx") || path.Contains("lang.owa"))
+            {
+                return;
+            }
+
             if (!context.User.Identity.IsAuthenticated)
             {
                 //not yet authenticated with login/pwd
