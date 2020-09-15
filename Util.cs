@@ -102,5 +102,32 @@ namespace MultiFactor.IIS.Adapter
 
             return ret;
         }
+
+        /// <summary>
+        /// User name without domain
+        /// </summary>
+        public static string CanonicalizeUserName(string userName)
+        {
+            if (string.IsNullOrEmpty(userName))
+            {
+                throw new ArgumentNullException(nameof(userName));
+            }
+
+            var identity = userName.ToLower();
+
+            var index = identity.IndexOf("\\");
+            if (index > 0)
+            {
+                identity = identity.Substring(index + 1);
+            }
+
+            index = identity.IndexOf("@");
+            if (index > 0)
+            {
+                identity = identity.Substring(0, index);
+            }
+
+            return identity;
+        }
     }
 }

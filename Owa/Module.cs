@@ -1,9 +1,7 @@
 ﻿using MultiFactor.IIS.Adapter.Services;
 using System;
-using System.IO;
 using System.Linq;
 using System.Web;
-using System.Web.Security;
 
 namespace MultiFactor.IIS.Adapter.Owa
 {
@@ -94,7 +92,9 @@ namespace MultiFactor.IIS.Adapter.Owa
             if (multifactorCookie != null)
             {
                 var isValidToken = _tokenValidationService.TryVerifyToken(multifactorCookie.Value, out string userName);
-                isAuthenticatedByMultifactor = isValidToken && user.ToLower() == userName;
+                var isValidUser = Util.CanonicalizeUserName(userName) == Util.CanonicalizeUserName(user);
+                
+                isAuthenticatedByMultifactor = isValidUser && isValidToken;
             }
 
             if (!isAuthenticatedByMultifactor)
