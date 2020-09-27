@@ -19,6 +19,7 @@ namespace MultiFactor.IIS.Adapter
                 ".css",
                 ".png",
                 ".gif",
+                ".ico",
             };
 
             var path = uri.LocalPath;

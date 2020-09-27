@@ -92,9 +92,11 @@ namespace MultiFactor.IIS.Adapter.Owa
             if (multifactorCookie != null)
             {
                 var isValidToken = _tokenValidationService.TryVerifyToken(multifactorCookie.Value, out string userName);
-                var isValidUser = Util.CanonicalizeUserName(userName) == Util.CanonicalizeUserName(user);
-                
-                isAuthenticatedByMultifactor = isValidUser && isValidToken;
+                if (isValidToken)
+                {
+                    var isValidUser = Util.CanonicalizeUserName(userName) == Util.CanonicalizeUserName(user);
+                    isAuthenticatedByMultifactor = isValidUser;
+                }
             }
 
             if (!isAuthenticatedByMultifactor)
