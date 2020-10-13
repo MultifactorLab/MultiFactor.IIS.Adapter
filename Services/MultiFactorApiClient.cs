@@ -38,6 +38,12 @@ namespace MultiFactor.IIS.Adapter.Services
                 {
                     web.Headers.Add("Content-Type", "application/json");
                     web.Headers.Add("Authorization", "Basic " + auth);
+
+                    if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
+                    {
+                        web.Proxy = new WebProxy(Configuration.Current.ApiProxy);
+                    }
+
                     responseData = web.UploadData(Configuration.Current.ApiUrl + "/access/requests", "POST", requestData);
                 }
 
