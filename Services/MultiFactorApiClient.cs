@@ -61,6 +61,7 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (Exception ex)
             {
+                Logger.API.Error(ex.ToString());
                 throw new Exception("MultiFactor API error: " + ex.Message);
             }
         }

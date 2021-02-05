@@ -27,7 +27,29 @@ namespace MultiFactor.IIS.Adapter.Owa
                 }
             }
 
+            context.BeginRequest += Context_BeginRequest;
             context.PostAuthorizeRequest += Context_PostAuthorizeRequest;
+        }
+
+        private void Context_BeginRequest(object sender, EventArgs e)
+        {
+            var context = HttpContext.Current;
+            var token = context.Request.Form["AccessToken"];
+
+            if (token != null)
+            {
+                //mfa response
+                var cookie = new HttpCookie(Constants.COOKIE_NAME, token)
+                {
+                    HttpOnly = true,
+                    Secure = true
+                };
+
+                context.Response.Cookies.Add(cookie);
+                context.Response.Redirect(context.Request.ApplicationPath, true);
+
+                return;
+            }
         }
 
         private void Context_PostAuthorizeRequest(object sender, EventArgs e)
@@ -68,9 +90,10 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
 
             var user = context.User.Identity.Name;
+            var canonicalUserName = Util.CanonicalizeUserName(user);
 
             //system mailbox
-            if (Constants.SYSTEM_MAILBOX_PREFIX.Any(sm => user.StartsWith(sm)))
+            if (Constants.SYSTEM_MAILBOX_PREFIX.Any(sm => canonicalUserName.StartsWith(sm)))
             {
                 return;
             }
@@ -82,9 +105,24 @@ namespace MultiFactor.IIS.Adapter.Owa
                 {
                     ProcessMultifactorRequest(context);
                 }
+
                 return;
             }
 
+            if (!string.IsNullOrEmpty(Configuration.Current.ActiveDirectory2FaGroup))
+            {
+                //check 2fa group membership
+                var activeDirectory = new ActiveDirectoryService(new CacheService(context));
+                var isMember = activeDirectory.ValidateMembership(canonicalUserName);
+
+                if (!isMember)
+                {
+                    //bypass 2fa
+                    return;
+                }
+            }
+
+            //mfa
             var isAuthenticatedByMultifactor = false;
 
             //check MultiFactor cookie
@@ -124,22 +162,11 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            var token = context.Request.Form["AccessToken"];
-            if (token != null)
-            {
-                //mfa response
-                var cookie = new HttpCookie(Constants.COOKIE_NAME, token);
-
-                context.Response.Cookies.Add(cookie);
-                context.Response.Redirect(context.Request.ApplicationPath);
-
-                return;
-            }
-
             var url = context.Request.Form["url"];
             if (url != null)
             {
                 //mfa request
+
                 var user = context.User.Identity.Name;
                 var multiFactorAccessUrl = _multiFactorApiClient.CreateRequest(user, url);
                 context.Response.Redirect(multiFactorAccessUrl, true);

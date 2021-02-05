@@ -8,11 +8,11 @@
         //built-in mailboxes
         public static readonly string[] SYSTEM_MAILBOX_PREFIX = new[]
         {
-            "HealthMailbox",
+            "healthmailbox",
             "extest",
-            "FederatedEmail",
-            "Migration",
-            "SystemMailbox"
+            "federatedemail",
+            "migration",
+            "systemmailbox"
         };
     }
 }

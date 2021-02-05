@@ -9,6 +9,8 @@ namespace MultiFactor.IIS.Adapter
         public string ApiSecret { get; set; }
         public string ApiUrl { get; set; }
         public string ApiProxy { get; set; }
+        public string ActiveDirectory2FaGroup { get; set; }
+        public int? ActiveDirectory2FaGroupMembershipCacheTimout { get; set; }
 
         public static Configuration Current { get; set; }
 
@@ -21,6 +23,8 @@ namespace MultiFactor.IIS.Adapter
             var apiKeySetting = appSettings["multifactor:api-key"];
             var apiSecretSetting = appSettings["multifactor:api-secret"];
             var apiProxySetting = appSettings["multifactor:api-proxy"];
+            var activeDirectory2FaGroupSetting = appSettings["multifactor:active-directory-2fa-group"];
+            var activeDirectory2FaGroupMembershipCacheTimout = appSettings["multifactor:active-directory-2fa-group-membership-cache-timeout"];
 
             if (string.IsNullOrEmpty(apiUrlSetting))
             {
@@ -40,8 +44,14 @@ namespace MultiFactor.IIS.Adapter
                 ApiUrl = apiUrlSetting,
                 ApiKey = apiKeySetting,
                 ApiSecret = apiSecretSetting,
-                ApiProxy = apiProxySetting
+                ApiProxy = apiProxySetting,
+                ActiveDirectory2FaGroup = activeDirectory2FaGroupSetting
             };
+
+            if (int.TryParse(activeDirectory2FaGroupMembershipCacheTimout, out var ttl))
+            {
+                Current.ActiveDirectory2FaGroupMembershipCacheTimout = ttl;
+            }
         }
     }
 }
