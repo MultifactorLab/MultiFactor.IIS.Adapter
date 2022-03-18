@@ -34,21 +34,26 @@ namespace MultiFactor.IIS.Adapter.Owa
         private void Context_BeginRequest(object sender, EventArgs e)
         {
             var context = HttpContext.Current;
-            var token = context.Request.Form["AccessToken"];
+            var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
 
-            if (token != null)
+            if (!path.Contains("lang.owa"))
             {
-                //mfa response
-                var cookie = new HttpCookie(Constants.COOKIE_NAME, token)
+                var token = context.Request.Form["AccessToken"];
+
+                if (token != null)
                 {
-                    HttpOnly = true,
-                    Secure = true
-                };
+                    //mfa response
+                    var cookie = new HttpCookie(Constants.COOKIE_NAME, token)
+                    {
+                        HttpOnly = true,
+                        Secure = true
+                    };
 
-                context.Response.Cookies.Add(cookie);
-                context.Response.Redirect(context.Request.ApplicationPath, true);
+                    context.Response.Cookies.Add(cookie);
+                    context.Response.Redirect(context.Request.ApplicationPath, true);
 
-                return;
+                    return;
+                }
             }
         }
 
@@ -78,7 +83,7 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
 
             //language selection page
-            if (path.Contains("/languageselection.aspx") || path.Contains("lang.owa"))
+            if (path.Contains("languageselection.aspx") || path.Contains("lang.owa"))
             {
                 return;
             }
