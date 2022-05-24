@@ -1,6 +1,8 @@
 ﻿using MultiFactor.IIS.Adapter.Services;
 using System;
+using System.IO;
 using System.Linq;
+using System.Security.Principal;
 using System.Web;
 
 namespace MultiFactor.IIS.Adapter.Owa
@@ -93,8 +95,13 @@ namespace MultiFactor.IIS.Adapter.Owa
                 //not yet authenticated with login/pwd
                 return;
             }
-
             var user = context.User.Identity.Name;
+
+            if (user.StartsWith("S-1-5-21")) //SID
+            {
+                user = TryGetUpnFromSid(context.User.Identity);
+            }
+
             var canonicalUserName = Util.CanonicalizeUserName(user);
 
             //system mailbox
@@ -175,6 +182,28 @@ namespace MultiFactor.IIS.Adapter.Owa
                 var user = context.User.Identity.Name;
                 var multiFactorAccessUrl = _multiFactorApiClient.CreateRequest(user, url);
                 context.Response.Redirect(multiFactorAccessUrl, true);
+            }
+        }
+
+        public string TryGetUpnFromSid(IIdentity identity)
+        {
+            //for download domains exchange uses OAuthIdentity with SID name
+            //lets try find UPN with reflection
+            var actAsUser = GetPropValue(identity, "ActAsUser");
+            var upn = GetPropValue(actAsUser, "UserPrincipalName");
+            return upn as string;
+        }
+
+        public static object GetPropValue(object src, string propName)
+        {
+            try
+            {
+                if (src == null) return null;
+                return src.GetType().GetProperty(propName).GetValue(src, null);
+            }
+            catch
+            {
+                return null;
             }
         }
     }
