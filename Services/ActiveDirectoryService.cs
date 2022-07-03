@@ -46,6 +46,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 using (var ldap = new LdapConnection(domain))
                 {
                     ldap.SessionOptions.RootDseCache = true;
+                    ldap.SessionOptions.ProtocolVersion = 3;
                     ldap.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
                     ldap.Bind(); //as current user
 

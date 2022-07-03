@@ -179,6 +179,11 @@ namespace MultiFactor.IIS.Adapter.Owa
             {
                 //mfa request
 
+                if (url.IndexOf("#") == -1)
+                {
+                    url += "#path=/mail";
+                }
+
                 var user = context.User.Identity.Name;
                 var multiFactorAccessUrl = _multiFactorApiClient.CreateRequest(user, url);
                 context.Response.Redirect(multiFactorAccessUrl, true);
