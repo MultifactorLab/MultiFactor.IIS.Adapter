@@ -83,6 +83,40 @@ namespace MultiFactor.IIS.Adapter.Services
             return null;
         }
 
+        public string SearchUserPrincipalName(string samAccountName)
+        {
+            try
+            {
+                var domain = IPGlobalProperties.GetIPGlobalProperties().DomainName;
+                var baseDn = Fqdn2Dn(domain);
+
+                using (var ldap = new LdapConnection(domain))
+                {
+                    ldap.SessionOptions.RootDseCache = true;
+                    ldap.SessionOptions.ProtocolVersion = 3;
+                    ldap.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
+                    ldap.Bind(); //as current user
+
+                    var searchFilter = $"(&(sAMAccountName={samAccountName})(objectClass=user))";
+
+                    var response = Query(ldap, baseDn, searchFilter, SearchScope.Subtree, "UserPrincipalName");
+
+                    if (response.Entries.Count > 0)
+                    {
+                        return response.Entries[0].Attributes["UserPrincipalName"]?[0]?.ToString();
+                    }
+
+                    return samAccountName;
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.Owa.Error(ex.ToString());
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Search group distinguished name
         /// </summary>

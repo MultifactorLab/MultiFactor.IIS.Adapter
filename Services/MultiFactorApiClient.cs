@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MultiFactor.IIS.Adapter.Owa;
+using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Text;
 
@@ -9,7 +11,7 @@ namespace MultiFactor.IIS.Adapter.Services
     /// </summary>
     public class MultiFactorApiClient
     {
-        public string CreateRequest(string login, string postbackUrl)
+        public string CreateRequest(string identity, string rawUserName, string postbackUrl)
         {
             try
             {
@@ -19,12 +21,16 @@ namespace MultiFactor.IIS.Adapter.Services
                 //payload
                 var json = Util.JsonSerialize(new
                 {
-                    Identity = login,
+                    Identity = identity,
                     Callback = new
                     {
                         Action = postbackUrl,
                         Target = "_self"
                     },
+                    claims = new Dictionary<string, string>
+                    {
+                        {  Constants.RAW_USER_NAME_CLAIM, rawUserName }
+                    }
                 });
 
                 var requestData = Encoding.UTF8.GetBytes(json);
@@ -48,7 +54,6 @@ namespace MultiFactor.IIS.Adapter.Services
                 }
 
                 json = Encoding.UTF8.GetString(responseData);
-
 
                 var response = Util.JsonDeserialize<MultiFactorWebResponse<MultiFactorAccessPage>>(json);
 

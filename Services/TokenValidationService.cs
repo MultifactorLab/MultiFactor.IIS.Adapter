@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MultiFactor.IIS.Adapter.Owa;
+using System;
 using System.Text;
 
 namespace MultiFactor.IIS.Adapter.Services
@@ -60,7 +61,10 @@ namespace MultiFactor.IIS.Adapter.Services
                 throw new Exception("Name ID not found");
             }
 
-            return sub;
+            //as is logged user without transformation
+            var rawUserName = json[Constants.RAW_USER_NAME_CLAIM] as string;
+
+            return rawUserName ?? sub;
         }
 
         /// <summary>

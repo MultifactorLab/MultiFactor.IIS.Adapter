@@ -1,6 +1,5 @@
 ﻿using MultiFactor.IIS.Adapter.Services;
 using System;
-using System.IO;
 using System.Linq;
 using System.Security.Principal;
 using System.Web;
@@ -185,7 +184,18 @@ namespace MultiFactor.IIS.Adapter.Owa
                 }
 
                 var user = context.User.Identity.Name;
-                var multiFactorAccessUrl = _multiFactorApiClient.CreateRequest(user, url);
+                var identity = user;
+
+                if (Configuration.Current.UseUpnAsIdentity)     //must find upn
+                {
+                    if (!identity.Contains("@"))    //already upn
+                    {
+                        var activeDirectory = new ActiveDirectoryService(new CacheService(context));
+                        identity = activeDirectory.SearchUserPrincipalName(Util.CanonicalizeUserName(identity));
+                    }
+                }
+
+                var multiFactorAccessUrl = _multiFactorApiClient.CreateRequest(identity, user, url);
                 context.Response.Redirect(multiFactorAccessUrl, true);
             }
         }

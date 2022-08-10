@@ -11,6 +11,8 @@ namespace MultiFactor.IIS.Adapter
         public string ApiProxy { get; set; }
         public string ActiveDirectory2FaGroup { get; set; }
         public int? ActiveDirectory2FaGroupMembershipCacheTimout { get; set; }
+        
+        public bool UseUpnAsIdentity { get; set; }
 
         public static Configuration Current { get; set; }
 
@@ -25,6 +27,7 @@ namespace MultiFactor.IIS.Adapter
             var apiProxySetting = appSettings["multifactor:api-proxy"];
             var activeDirectory2FaGroupSetting = appSettings["multifactor:active-directory-2fa-group"];
             var activeDirectory2FaGroupMembershipCacheTimout = appSettings["multifactor:active-directory-2fa-group-membership-cache-timeout"];
+            var useUpnAsIdentitySetting = appSettings["multifactor:use-upn-as-identity"];
 
             if (string.IsNullOrEmpty(apiUrlSetting))
             {
@@ -51,6 +54,11 @@ namespace MultiFactor.IIS.Adapter
             if (int.TryParse(activeDirectory2FaGroupMembershipCacheTimout, out var ttl))
             {
                 Current.ActiveDirectory2FaGroupMembershipCacheTimout = ttl;
+            }
+
+            if (bool.TryParse(useUpnAsIdentitySetting, out var useUpnAsIdentity))
+            {
+                Current.UseUpnAsIdentity = useUpnAsIdentity;
             }
         }
     }
