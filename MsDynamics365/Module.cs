@@ -1,10 +1,8 @@
 ﻿using MultiFactor.IIS.Adapter.Services;
 using System;
-using System.Linq;
-using System.Security.Principal;
 using System.Web;
 
-namespace MultiFactor.IIS.Adapter.Owa
+namespace MultiFactor.IIS.Adapter.MsDynamics365
 {
     public class Module : IHttpModule
     {
@@ -35,33 +33,28 @@ namespace MultiFactor.IIS.Adapter.Owa
         private void Context_BeginRequest(object sender, EventArgs e)
         {
             var context = HttpContext.Current;
-            var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
+            var token = context.Request.Form["AccessToken"];
 
-            if (!path.Contains("lang.owa"))
+            if (token != null)
             {
-                var token = context.Request.Form["AccessToken"];
-
-                if (token != null)
+                //mfa response
+                var cookie = new HttpCookie(Constants.COOKIE_NAME, token)
                 {
-                    //mfa response
-                    var cookie = new HttpCookie(Constants.COOKIE_NAME, token)
-                    {
-                        HttpOnly = true,
-                        Secure = true
-                    };
+                    HttpOnly = true,
+                    Secure = true
+                };
 
-                    context.Response.Cookies.Add(cookie);
-                    context.Response.Redirect(context.Request.ApplicationPath, true);
+                context.Response.Cookies.Add(cookie);
+                context.Response.Redirect(GetWebAppRoot(), true);
 
-                    return;
-                }
+                return;
             }
         }
 
         private void Context_PostAuthorizeRequest(object sender, EventArgs e)
         {
             var context = HttpContext.Current;
-            var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
+            var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped).ToLower();
 
             //static resources
             if (WebUtil.IsStaticResourceRequest(context.Request.Url))
@@ -69,24 +62,9 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            //logoff page
-            if (path.Contains("logoff.owa"))
+            if (path.Contains("errorhandler.aspx"))
             {
-                //clean mfa cookie
-                context.Response.Cookies[Constants.COOKIE_NAME].Expires = DateTime.UtcNow.AddDays(-1);
-                return;
-            }
-
-            //auth page
-            if (path.Contains("/auth"))
-            {
-                return;
-            }
-
-            //language selection page
-            if (path.Contains("languageselection.aspx") || path.Contains("lang.owa"))
-            {
-                return;
+                return; //show any error
             }
 
             if (!context.User.Identity.IsAuthenticated)
@@ -96,18 +74,7 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
             var user = context.User.Identity.Name;
 
-            if (user.StartsWith("S-1-5-21")) //SID
-            {
-                user = TryGetUpnFromSid(context.User.Identity);
-            }
-
             var canonicalUserName = Util.CanonicalizeUserName(user);
-
-            //system mailbox
-            if (Constants.EXCHANGE_SYSTEM_MAILBOX_PREFIX.Any(sm => canonicalUserName.StartsWith(sm)))
-            {
-                return;
-            }
 
             //process request or postback to/from MultiFactor
             if (path.Contains(Constants.MULTIFACTOR_PAGE))
@@ -152,14 +119,15 @@ namespace MultiFactor.IIS.Adapter.Owa
             {
                 if (WebUtil.IsXhrRequest(context.Request)) //ajax request
                 {
-                    //tell owa to refresh authentication
+                    //tell app to refresh authentication
                     context.Response.StatusCode = 440;
                     context.Response.End();
                 }
                 else
                 {
                     //redirect to mfa
-                    context.Response.Redirect(context.Request.ApplicationPath + "/" + Constants.MULTIFACTOR_PAGE);
+                    var redirectUrl = GetWebAppRoot() +Constants.MULTIFACTOR_PAGE;
+                    context.Response.Redirect(redirectUrl);
                 }
             }
         }
@@ -178,11 +146,6 @@ namespace MultiFactor.IIS.Adapter.Owa
             {
                 //mfa request
 
-                if (url.IndexOf("#") == -1)
-                {
-                    url += "#path=/mail";
-                }
-
                 var user = context.User.Identity.Name;
                 var identity = user;
 
@@ -200,26 +163,27 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
         }
 
-        public string TryGetUpnFromSid(IIdentity identity)
+        private string GetWebAppRoot()
         {
-            //for download domains exchange uses OAuthIdentity with SID name
-            //lets try find UPN with reflection
-            var actAsUser = GetPropValue(identity, "ActAsUser");
-            var upn = GetPropValue(actAsUser, "UserPrincipalName");
-            return upn as string;
-        }
+            var context = HttpContext.Current;
 
-        public static object GetPropValue(object src, string propName)
-        {
-            try
+            var host = (context.Request.Url.IsDefaultPort) ?
+                context.Request.Url.Host :
+                context.Request.Url.Authority;
+
+            host = string.Format("{0}://{1}", context.Request.Url.Scheme, host);
+
+            if (context.Request.ApplicationPath != "/")
             {
-                if (src == null) return null;
-                return src.GetType().GetProperty(propName).GetValue(src, null);
+                host = host + HttpContext.Current.Request.ApplicationPath;
             }
-            catch
+
+            if (!host.EndsWith("/"))
             {
-                return null;
+                host = host + "/";
             }
+
+            return host;
         }
     }
 }
