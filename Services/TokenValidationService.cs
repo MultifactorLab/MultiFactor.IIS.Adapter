@@ -1,5 +1,5 @@
-﻿using MultiFactor.IIS.Adapter.Owa;
-using System;
+﻿using System;
+using System.Collections.Generic;
 using System.Text;
 
 namespace MultiFactor.IIS.Adapter.Services
@@ -38,7 +38,7 @@ namespace MultiFactor.IIS.Adapter.Services
             }
 
             var decodedBody = Encoding.UTF8.GetString(Util.Base64UrlDecode(body));
-            var json = Util.JsonToDictionary(decodedBody);
+            var json = Util.JsonDeserialize<Dictionary<string, object>>(decodedBody);
 
             //validate audience
             var aud = json["aud"] as string;
@@ -77,8 +77,9 @@ namespace MultiFactor.IIS.Adapter.Services
                 identity = VerifyToken(jwt);
                 return true;
             }
-            catch
+            catch (Exception ex)
             {
+                Logger.IIS.Error($"Failed to parse token: {ex.Message}, {ex}");
                 identity = null;
                 return false;
             }

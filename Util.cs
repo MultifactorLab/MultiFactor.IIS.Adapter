@@ -78,31 +78,6 @@ namespace MultiFactor.IIS.Adapter
             return seriailizer.Deserialize<T>(json);
         }
 
-        public static IDictionary<string, object> JsonToDictionary(string json)
-        {
-            //simple parser for JWT body
-
-            if (string.IsNullOrEmpty(json))
-            {
-                throw new ArgumentNullException(nameof(json));
-            }
-
-            var ret = new Dictionary<string, object>();
-
-            var array = json.Trim(new[] { '{', '}' }).Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries);
-            
-            foreach(var element in array)
-            {
-                var splitterPosition = element.IndexOf(':');
-                var key = element.Substring(0, splitterPosition);
-                var value = element.Substring(splitterPosition + 1);
-
-                ret.Add(key.Trim(new[] { '"' }), value.Trim(new[] { '"' }).Replace(@"\\", @"\"));
-            }
-
-            return ret;
-        }
-
         /// <summary>
         /// User name without domain
         /// </summary>

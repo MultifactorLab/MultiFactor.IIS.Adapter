@@ -17,6 +17,7 @@ namespace MultiFactor.IIS.Adapter.Services
 
         public static Logger Owa => new Logger("Multifactor OWA");
         public static Logger API => new Logger("Multifactor API");
+        public static Logger IIS => new Logger("Multifactor IIS");
 
         public void Info(string message)
         {
