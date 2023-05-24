@@ -1,21 +1,24 @@
 ﻿using System;
+using System.Collections.Specialized;
 using System.Configuration;
+using System.Linq;
 
 namespace MultiFactor.IIS.Adapter
 {
     public class Configuration
     {
-        public string ApiKey { get; set; }
-        public string ApiSecret { get; set; }
-        public string ApiUrl { get; set; }
-        public string ApiProxy { get; set; }
-        public string ActiveDirectory2FaGroup { get; set; }
-        public int? ActiveDirectory2FaGroupMembershipCacheTimout { get; set; }
-        
-        public bool UseUpnAsIdentity { get; set; }
+        public string ApiKey { get; private set; }
+        public string ApiSecret { get; private set; }
+        public string ApiUrl { get; private set; }
+        public string ApiProxy { get; private set; }
+        public string ActiveDirectory2FaGroup { get; private set; }
+        public int ActiveDirectoryCacheTimout { get; private set; }        
+        public bool UseUpnAsIdentity { get; private set; }
+        public string[] PhoneAttributes { get; private set; } = new string[0];
 
-        public static Configuration Current { get; set; }
+        public static Configuration Current { get; private set; }
 
+        private Configuration() { }
 
         public static void Load()
         {
@@ -26,7 +29,6 @@ namespace MultiFactor.IIS.Adapter
             var apiSecretSetting = appSettings["multifactor:api-secret"];
             var apiProxySetting = appSettings["multifactor:api-proxy"];
             var activeDirectory2FaGroupSetting = appSettings["multifactor:active-directory-2fa-group"];
-            var activeDirectory2FaGroupMembershipCacheTimout = appSettings["multifactor:active-directory-2fa-group-membership-cache-timeout"];
             var useUpnAsIdentitySetting = appSettings["multifactor:use-upn-as-identity"];
 
             if (string.IsNullOrEmpty(apiUrlSetting))
@@ -51,15 +53,39 @@ namespace MultiFactor.IIS.Adapter
                 ActiveDirectory2FaGroup = activeDirectory2FaGroupSetting
             };
 
-            if (int.TryParse(activeDirectory2FaGroupMembershipCacheTimout, out var ttl))
-            {
-                Current.ActiveDirectory2FaGroupMembershipCacheTimout = ttl;
-            }
-
             if (bool.TryParse(useUpnAsIdentitySetting, out var useUpnAsIdentity))
             {
                 Current.UseUpnAsIdentity = useUpnAsIdentity;
             }
+
+            ReadActiveDirectoryCacheTimoutSetting(appSettings, Current);
+            ReadPhoneAttributeSetting(appSettings, Current);
+        }
+
+        private static void ReadPhoneAttributeSetting(NameValueCollection appSettings, Configuration configuration)
+        {
+            const string key = "multifactor:phone-attribute";
+            var value = appSettings[key];
+            if (string.IsNullOrWhiteSpace(value)) return;
+
+            var parsed = value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(attr => attr.Trim()).ToArray();
+            if (parsed.Length != 0) configuration.PhoneAttributes = parsed;     
+        }
+
+        private static void ReadActiveDirectoryCacheTimoutSetting(NameValueCollection appSettings, Configuration configuration)
+        {
+            const string legacyKey = "multifactor:active-directory-2fa-group-membership-cache-timeout";
+            const string key = "multifactor:active-directory-cache-timeout";
+
+            int ttl = 0;
+
+            var legacyValue = appSettings[legacyKey];
+            if (int.TryParse(legacyValue, out var legVal)) ttl = legVal;
+            
+            var value = appSettings[key];
+            if (int.TryParse(value, out var val)) ttl = val;
+            
+            configuration.ActiveDirectoryCacheTimout = ttl;
         }
     }
 }

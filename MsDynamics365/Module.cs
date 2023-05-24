@@ -8,9 +8,6 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
     {
         private readonly object _sync = new object();
 
-        private MultiFactorApiClient _multiFactorApiClient = new MultiFactorApiClient();
-        private TokenValidationService _tokenValidationService = new TokenValidationService();
-
         public void Dispose()
         {
         }
@@ -90,7 +87,7 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             if (!string.IsNullOrEmpty(Configuration.Current.ActiveDirectory2FaGroup))
             {
                 //check 2fa group membership
-                var activeDirectory = new ActiveDirectoryService(new CacheService(context));
+                var activeDirectory = new ActiveDirectoryService(new CacheService(context), Logger.IIS);
                 var isMember = activeDirectory.ValidateMembership(canonicalUserName);
 
                 if (!isMember)
@@ -107,7 +104,8 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             var multifactorCookie = context.Request.Cookies[Constants.COOKIE_NAME];
             if (multifactorCookie != null)
             {
-                var isValidToken = _tokenValidationService.TryVerifyToken(multifactorCookie.Value, out string userName);
+                var srv = new TokenValidationService(Logger.IIS);
+                var isValidToken = srv.TryVerifyToken(multifactorCookie.Value, out string userName);
                 if (isValidToken)
                 {
                     var isValidUser = Util.CanonicalizeUserName(userName) == Util.CanonicalizeUserName(user);
@@ -149,16 +147,19 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
                 var user = context.User.Identity.Name;
                 var identity = user;
 
+                var activeDirectory = new ActiveDirectoryService(new CacheService(context), Logger.IIS);
+                var profile = activeDirectory.GetProfile(Util.CanonicalizeUserName(identity));
+
                 if (Configuration.Current.UseUpnAsIdentity)     //must find upn
                 {
                     if (!identity.Contains("@"))    //already upn
                     {
-                        var activeDirectory = new ActiveDirectoryService(new CacheService(context));
-                        identity = activeDirectory.SearchUserPrincipalName(Util.CanonicalizeUserName(identity));
+                        identity = profile.UserPrincipalName;
                     }
                 }
 
-                var multiFactorAccessUrl = _multiFactorApiClient.CreateRequest(identity, user, url);
+                var api = new MultiFactorApiClient(Logger.API);
+                var multiFactorAccessUrl = api.CreateRequest(identity, user, url, profile);
                 context.Response.Redirect(multiFactorAccessUrl, true);
             }
         }
@@ -175,12 +176,12 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
 
             if (context.Request.ApplicationPath != "/")
             {
-                host = host + HttpContext.Current.Request.ApplicationPath;
+                host = $"{host}{HttpContext.Current.Request.ApplicationPath}";
             }
 
             if (!host.EndsWith("/"))
             {
-                host = host + "/";
+                host = $"{host}/";
             }
 
             return host;

@@ -23,10 +23,12 @@ namespace MultiFactor.IIS.Adapter.Services
         {
             WriteEvent(message, EventLogEntryType.Information);
         }
+
         public void Warn(string message)
         {
             WriteEvent(message, EventLogEntryType.Warning);
         }
+
         public void Error(string message)
         {
             WriteEvent(message, EventLogEntryType.Error);

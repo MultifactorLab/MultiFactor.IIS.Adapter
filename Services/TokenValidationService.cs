@@ -9,6 +9,13 @@ namespace MultiFactor.IIS.Adapter.Services
     /// </summary>
     public class TokenValidationService
     {
+        private readonly Logger _logger;
+
+        public TokenValidationService(Logger logger)
+        {
+            _logger = logger;
+        }
+
         /// <summary>
         /// Verify JWT
         /// </summary>
@@ -79,7 +86,7 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (Exception ex)
             {
-                Logger.IIS.Error($"Failed to parse token: {ex.Message}, {ex}");
+                _logger.Error($"Failed to parse token: {ex.Message}, {ex}");
                 identity = null;
                 return false;
             }

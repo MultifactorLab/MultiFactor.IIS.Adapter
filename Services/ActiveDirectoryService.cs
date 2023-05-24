@@ -1,7 +1,8 @@
-﻿using System;
+﻿using MultiFactor.IIS.Adapter.Extensions;
+using MultiFactor.IIS.Adapter.Services.Ldap;
+using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
+using System;
 using System.DirectoryServices.Protocols;
-using System.Linq;
-using System.Net.NetworkInformation;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
@@ -11,10 +12,29 @@ namespace MultiFactor.IIS.Adapter.Services
     public class ActiveDirectoryService
     {
         private CacheService _cache;
+        private readonly Logger _logger;
 
-        public ActiveDirectoryService(CacheService cache)
+        public ActiveDirectoryService(CacheService cache, Logger logger)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        public ILdapProfile GetProfile(string samAccountName)
+        {
+            if (samAccountName is null) throw new ArgumentNullException(nameof(samAccountName));
+
+            var profile = _cache.GetProfile(samAccountName);
+            if (profile != null) return profile;
+
+            using (var adapter = LdapConnectionAdapter.Create())
+            {
+                var loader = new ProfileLoader(adapter, _logger);
+                profile = loader.Load(samAccountName);
+
+                _cache.SetProfile(samAccountName, profile);
+                return profile;
+            }
         }
 
         /// <summary>
@@ -40,20 +60,13 @@ namespace MultiFactor.IIS.Adapter.Services
 
             try
             {
-                var domain = IPGlobalProperties.GetIPGlobalProperties().DomainName;
-                var baseDn = Fqdn2Dn(domain);
-
-                using (var ldap = new LdapConnection(domain))
+                using (var adapter = LdapConnectionAdapter.Create())
                 {
-                    ldap.SessionOptions.RootDseCache = true;
-                    ldap.SessionOptions.ProtocolVersion = 3;
-                    ldap.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
-                    ldap.Bind(); //as current user
-
+                    var baseDn = adapter.Domain.GetDn();
                     var groupDn = _cache.GetGroupDn(groupName);
                     if (groupDn == null)
                     {
-                        groupDn = GetGroupDn(ldap, groupName, baseDn);
+                        groupDn = GetGroupDn(adapter, groupName, baseDn);
                         if (groupDn != null)
                         {
                             _cache.SetGroupDn(groupName, groupDn);
@@ -62,22 +75,19 @@ namespace MultiFactor.IIS.Adapter.Services
 
                     if (groupDn == null)
                     {
-                        Logger.Owa.Warn($"Security group {groupName} not exists");
+                        _logger.Warn($"Security group {groupName} not exists");
                         return null; //group not exists
                     }
 
                     var searchFilter = $"(&(sAMAccountName={samAccountName})(memberOf:1.2.840.113556.1.4.1941:={groupDn}))";
+                    var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, "DistinguishedName");
 
-                    var response = Query(ldap, baseDn, searchFilter, SearchScope.Subtree, "DistinguishedName");
-
-                    var isInGroup = response.Entries.Count > 0;
-
-                    return isInGroup;
+                    return response.Entries.Count != 0;
                 }
             }
             catch (Exception ex)
             {
-                Logger.Owa.Error(ex.ToString());
+                _logger.Error(ex.ToString());
             }
 
             return null;
@@ -85,33 +95,22 @@ namespace MultiFactor.IIS.Adapter.Services
 
         public string SearchUserPrincipalName(string samAccountName)
         {
+            const string attr = "UserPrincipalName";
+
             try
             {
-                var domain = IPGlobalProperties.GetIPGlobalProperties().DomainName;
-                var baseDn = Fqdn2Dn(domain);
-
-                using (var ldap = new LdapConnection(domain))
+                using (var adapter = LdapConnectionAdapter.Create())
                 {
-                    ldap.SessionOptions.RootDseCache = true;
-                    ldap.SessionOptions.ProtocolVersion = 3;
-                    ldap.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
-                    ldap.Bind(); //as current user
-
                     var searchFilter = $"(&(sAMAccountName={samAccountName})(objectClass=user))";
-
-                    var response = Query(ldap, baseDn, searchFilter, SearchScope.Subtree, "UserPrincipalName");
-
-                    if (response.Entries.Count > 0)
-                    {
-                        return response.Entries[0].Attributes["UserPrincipalName"]?[0]?.ToString();
-                    }
-
-                    return samAccountName;
+                    var response = adapter.Search(adapter.Domain.GetDn(), searchFilter, SearchScope.Subtree, attr);
+                    if (response.Entries.Count == 0) return samAccountName;
+                    
+                    return response.Entries[0].Attributes[attr]?[0]?.ToString();
                 }
             }
             catch (Exception ex)
             {
-                Logger.Owa.Error(ex.ToString());
+                _logger.Error(ex.ToString());
             }
 
             return null;
@@ -120,49 +119,13 @@ namespace MultiFactor.IIS.Adapter.Services
         /// <summary>
         /// Search group distinguished name
         /// </summary>
-        private string GetGroupDn(LdapConnection connection, string name, string baseDn)
+        private string GetGroupDn(LdapConnectionAdapter adapter, string name, string baseDn)
         {
             var searchFilter = $"(&(objectCategory=group)(name={name}))";
-            var response = Query(connection, baseDn, searchFilter, SearchScope.Subtree, "DistinguishedName");
-            
-            if (response.Entries.Count > 0)
-            {
-                return response.Entries[0].DistinguishedName;
-            }
+            var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, "DistinguishedName");
+            if (response.Entries.Count == 0) return null;
 
-            return null;
-        }
-
-        /// <summary>
-        /// Query to LDAP
-        /// </summary>
-        private SearchResponse Query(LdapConnection connection, string baseDn, string filter, SearchScope scope, params string[] attributes)
-        {
-            var searchRequest = new SearchRequest
-                (baseDn,
-                 filter,
-                 scope,
-                 attributes);
-
-            var response = (SearchResponse)connection.SendRequest(searchRequest);
-            return response;
-        }
-
-        /// <summary>
-        /// Converts domain.local to DC=domain,DC=local
-        /// </summary>
-        private string Fqdn2Dn(string name)
-        {
-            var portIndex = name.IndexOf(":");
-            if (portIndex > 0)
-            {
-                name = name.Substring(0, portIndex);
-            }
-
-            var domains = name.Split(new[] { '.' }, StringSplitOptions.RemoveEmptyEntries);
-            var dn = domains.Select(p => $"DC={p}").ToArray();
-
-            return string.Join(",", dn);
+            return response.Entries[0].DistinguishedName;
         }
     }
 }

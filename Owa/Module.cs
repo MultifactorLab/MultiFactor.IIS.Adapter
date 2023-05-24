@@ -1,4 +1,5 @@
 ﻿using MultiFactor.IIS.Adapter.Services;
+using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
 using System;
 using System.Linq;
 using System.Security.Principal;
@@ -9,9 +10,6 @@ namespace MultiFactor.IIS.Adapter.Owa
     public class Module : IHttpModule
     {
         private readonly object _sync = new object();
-
-        private MultiFactorApiClient _multiFactorApiClient = new MultiFactorApiClient();
-        private TokenValidationService _tokenValidationService = new TokenValidationService();
 
         public void Dispose()
         {
@@ -123,7 +121,7 @@ namespace MultiFactor.IIS.Adapter.Owa
             if (!string.IsNullOrEmpty(Configuration.Current.ActiveDirectory2FaGroup))
             {
                 //check 2fa group membership
-                var activeDirectory = new ActiveDirectoryService(new CacheService(context));
+                var activeDirectory = new ActiveDirectoryService(new CacheService(context), Logger.Owa);
                 var isMember = activeDirectory.ValidateMembership(canonicalUserName);
 
                 if (!isMember)
@@ -140,7 +138,8 @@ namespace MultiFactor.IIS.Adapter.Owa
             var multifactorCookie = context.Request.Cookies[Constants.COOKIE_NAME];
             if (multifactorCookie != null)
             {
-                var isValidToken = _tokenValidationService.TryVerifyToken(multifactorCookie.Value, out string userName);
+                var srv = new TokenValidationService(Logger.Owa);
+                var isValidToken = srv.TryVerifyToken(multifactorCookie.Value, out string userName);
                 if (isValidToken)
                 {
                     var isValidUser = Util.CanonicalizeUserName(userName) == Util.CanonicalizeUserName(user);
@@ -186,16 +185,18 @@ namespace MultiFactor.IIS.Adapter.Owa
                 var user = context.User.Identity.Name;
                 var identity = user;
 
+                var activeDirectory = new ActiveDirectoryService(new CacheService(context), Logger.Owa);
+                var profile = activeDirectory.GetProfile(Util.CanonicalizeUserName(identity));
                 if (Configuration.Current.UseUpnAsIdentity)     //must find upn
                 {
                     if (!identity.Contains("@"))    //already upn
                     {
-                        var activeDirectory = new ActiveDirectoryService(new CacheService(context));
-                        identity = activeDirectory.SearchUserPrincipalName(Util.CanonicalizeUserName(identity));
+                        identity = profile.UserPrincipalName;
                     }
                 }
 
-                var multiFactorAccessUrl = _multiFactorApiClient.CreateRequest(identity, user, url);
+                var api = new MultiFactorApiClient(Logger.API);
+                var multiFactorAccessUrl = api.CreateRequest(identity, user, url, profile);
                 context.Response.Redirect(multiFactorAccessUrl, true);
             }
         }
