@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Net;
-using System.Security.Policy;
 using System.Text;
 
 namespace MultiFactor.IIS.Adapter.Services

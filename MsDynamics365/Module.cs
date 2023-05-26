@@ -1,35 +1,15 @@
-﻿using MultiFactor.IIS.Adapter.Services;
+﻿using MultiFactor.IIS.Adapter.Core;
+using MultiFactor.IIS.Adapter.Owa;
+using MultiFactor.IIS.Adapter.Services;
 using System;
 using System.Web;
 
 namespace MultiFactor.IIS.Adapter.MsDynamics365
 {
-    public class Module : IHttpModule
+    public class Module : HttpModuleBase
     {
-        private readonly object _sync = new object();
-
-        public void Dispose()
+        public override void OnBeginRequest(HttpContextBase context)
         {
-        }
-
-        public void Init(HttpApplication context)
-        {
-            if (Configuration.Current == null)
-            {
-                //load configuration from web.config
-                lock (_sync)
-                {
-                    Configuration.Load();
-                }
-            }
-
-            context.BeginRequest += Context_BeginRequest;
-            context.PostAuthorizeRequest += Context_PostAuthorizeRequest;
-        }
-
-        private void Context_BeginRequest(object sender, EventArgs e)
-        {
-            var context = HttpContext.Current;
             var token = context.Request.Form["AccessToken"];
 
             if (token != null)
@@ -48,9 +28,8 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             }
         }
 
-        private void Context_PostAuthorizeRequest(object sender, EventArgs e)
+        public override void OnPostAuthorizeRequest(HttpContextBase context)
         {
-            var context = HttpContext.Current;
             var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped).ToLower();
 
             //static resources
@@ -84,53 +63,34 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
                 return;
             }
 
-            if (!string.IsNullOrEmpty(Configuration.Current.ActiveDirectory2FaGroup))
+            var ad = new ActiveDirectoryService(new CacheService(context), Logger.IIS);
+            var secondFactorRequired = new UserRequiredSecondFactor(ad);
+            if (!secondFactorRequired.Execute(canonicalUserName))
             {
-                //check 2fa group membership
-                var activeDirectory = new ActiveDirectoryService(new CacheService(context), Logger.IIS);
-                var isMember = activeDirectory.ValidateMembership(canonicalUserName);
-
-                if (!isMember)
-                {
-                    //bypass 2fa
-                    return;
-                }
+                //bypass 2fa
+                return;
             }
 
             //mfa
-            var isAuthenticatedByMultifactor = false;
-
-            //check MultiFactor cookie
-            var multifactorCookie = context.Request.Cookies[Constants.COOKIE_NAME];
-            if (multifactorCookie != null)
+            var valSrv = new TokenValidationService(Logger.IIS);
+            var checker = new AuthChecker(context, valSrv);
+            var isAuthenticatedByMultifactor = checker.IsAuthenticated(user);
+            if (isAuthenticatedByMultifactor) return;
+            
+            if (WebUtil.IsXhrRequest(context.Request)) //ajax request
             {
-                var srv = new TokenValidationService(Logger.IIS);
-                var isValidToken = srv.TryVerifyToken(multifactorCookie.Value, out string userName);
-                if (isValidToken)
-                {
-                    var isValidUser = Util.CanonicalizeUserName(userName) == Util.CanonicalizeUserName(user);
-                    isAuthenticatedByMultifactor = isValidUser;
-                }
-            }
-
-            if (!isAuthenticatedByMultifactor)
-            {
-                if (WebUtil.IsXhrRequest(context.Request)) //ajax request
-                {
-                    //tell app to refresh authentication
-                    context.Response.StatusCode = 440;
-                    context.Response.End();
-                }
-                else
-                {
-                    //redirect to mfa
-                    var redirectUrl = GetWebAppRoot() +Constants.MULTIFACTOR_PAGE;
-                    context.Response.Redirect(redirectUrl);
-                }
-            }
+                //tell app to refresh authentication
+                context.Response.StatusCode = 440;
+                context.Response.End();
+                return;
+            }       
+            
+            //redirect to mfa
+            var redirectUrl = $"{GetWebAppRoot()}{Constants.MULTIFACTOR_PAGE}";
+            context.Response.Redirect(redirectUrl);       
         }
 
-        private void ProcessMultifactorRequest(HttpContext context)
+        private void ProcessMultifactorRequest(HttpContextBase context)
         {
             //check if user session timed-out
             if (!context.User.Identity.IsAuthenticated)
@@ -140,28 +100,15 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             }
 
             var url = context.Request.Form["url"];
-            if (url != null)
-            {
-                //mfa request
+            if (url == null) return;
 
-                var user = context.User.Identity.Name;
-                var identity = user;
+            //mfa request
+            var ad = new ActiveDirectoryService(new CacheService(context), Logger.IIS);
+            var api = new MultiFactorApiClient(Logger.API);
+            var processor = new SecondFactorProcessor(ad, api);
 
-                var activeDirectory = new ActiveDirectoryService(new CacheService(context), Logger.IIS);
-                var profile = activeDirectory.GetProfile(Util.CanonicalizeUserName(identity));
-
-                if (Configuration.Current.UseUpnAsIdentity)     //must find upn
-                {
-                    if (!identity.Contains("@"))    //already upn
-                    {
-                        identity = profile.UserPrincipalName;
-                    }
-                }
-
-                var api = new MultiFactorApiClient(Logger.API);
-                var multiFactorAccessUrl = api.CreateRequest(identity, user, url, profile);
-                context.Response.Redirect(multiFactorAccessUrl, true);
-            }
+            var multiFactorAccessUrl = processor.GetAccessUrl(context.User.Identity.Name, url);
+            context.Response.Redirect(multiFactorAccessUrl, true);
         }
 
         private string GetWebAppRoot()

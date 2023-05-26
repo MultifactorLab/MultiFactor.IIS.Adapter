@@ -77,7 +77,7 @@ namespace MultiFactor.IIS.Adapter
             const string legacyKey = "multifactor:active-directory-2fa-group-membership-cache-timeout";
             const string key = "multifactor:active-directory-cache-timeout";
 
-            int ttl = 0;
+            int ttl = -1;
 
             var legacyValue = appSettings[legacyKey];
             if (int.TryParse(legacyValue, out var legVal)) ttl = legVal;

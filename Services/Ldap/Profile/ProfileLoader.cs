@@ -56,10 +56,10 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
         {
             foreach (var attr in Configuration.Current.PhoneAttributes)
             {
-                var existed = response.Entries[0].Attributes[attr]?[0]?.ToString();
-                if (existed == null) continue;
+                var value = response.Entries[0].Attributes[attr]?[0]?.ToString();
+                if (value == null) continue;
 
-                profile.SetPhone(attr, existed);
+                profile.SetPhone(value, attr);
                 break;
             }
         }

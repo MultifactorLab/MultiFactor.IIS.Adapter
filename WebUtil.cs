@@ -6,7 +6,7 @@ namespace MultiFactor.IIS.Adapter
 {
     public static class WebUtil
     {
-        public static bool IsXhrRequest(HttpRequest request)
+        public static bool IsXhrRequest(HttpRequestBase request)
         {
             return request.Headers["x-requested-with"] == "XMLHttpRequest";
         }

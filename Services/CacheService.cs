@@ -14,9 +14,9 @@ namespace MultiFactor.IIS.Adapter.Services
         const string DN_KEY = "dn";
         const string PROFILE_KEY = "profile";
 
-        private readonly HttpContext _context;
+        private readonly HttpContextBase _context;
 
-        public CacheService(HttpContext context)
+        public CacheService(HttpContextBase context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
@@ -93,7 +93,7 @@ namespace MultiFactor.IIS.Adapter.Services
 
         private int GetTtl()
         {
-            return Configuration.Current.ActiveDirectoryCacheTimout >= 0
+            return Configuration.Current.ActiveDirectoryCacheTimout != -1
                 ? Configuration.Current.ActiveDirectoryCacheTimout
                 : AD_CACHE_TIMEOUT;
         }
