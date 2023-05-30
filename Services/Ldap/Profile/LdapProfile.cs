@@ -9,14 +9,13 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
         private const string _upnKey = "UserPrincipalName";
 
         private readonly Dictionary<string, string> _attrs = new Dictionary<string, string>();
-        private readonly Func<string, string> _getter;
         private Func<string> _phoneGetter;
 
-        public string SamAccountName => _getter(_samAccountNameKey);
-        public string UserPrincipalName => _getter(_upnKey);
+        public string SamAccountName => GetAttr(_samAccountNameKey);
+        public string UserPrincipalName => GetAttr(_upnKey);
         public string Phone => _phoneGetter();
 
-        public string this[string key] => _getter(key);
+        public string this[string key] => GetAttr(key);
 
 
         private LdapProfile(string samAccountName)
@@ -27,8 +26,7 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
             }
 
             _attrs[_samAccountNameKey] = samAccountName;
-            _getter = key => _attrs.ContainsKey(key) ? _attrs[key] : null;
-            _phoneGetter = () => _getter("telephoneNumber");
+            _phoneGetter = () => GetAttr("telephoneNumber");
         }
 
         public static ILdapProfileBuilder Create(string samAccountName) => new LdapProfile(samAccountName);
@@ -47,5 +45,7 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
             _attrs[_upnKey] = value;
             return this;
         }
+
+        private string GetAttr(string key) => _attrs.ContainsKey(key) ? _attrs[key] : null;
     }
 }
