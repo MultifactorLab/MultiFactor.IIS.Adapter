@@ -105,7 +105,7 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             //mfa request
             var ad = new ActiveDirectoryService(new CacheService(context), Logger.IIS);
             var api = new MultiFactorApiClient(Logger.API);
-            var processor = new SecondFactorProcessor(ad, api);
+            var processor = new AccessUrlGetter(ad, api);
 
             var multiFactorAccessUrl = processor.GetAccessUrl(context.User.Identity.Name, url);
             context.Response.Redirect(multiFactorAccessUrl, true);

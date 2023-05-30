@@ -84,7 +84,7 @@
     <Compile Include="Services\Logger.cs" />
     <Compile Include="Services\MultiFactorApiClient.cs" />
     <Compile Include="Services\Ldap\Profile\ProfileLoader.cs" />
-    <Compile Include="Services\SecondFactorProcessor.cs" />
+    <Compile Include="Services\AccessUrlGetter.cs" />
     <Compile Include="Services\TokenValidationService.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="WebUtil.cs" />

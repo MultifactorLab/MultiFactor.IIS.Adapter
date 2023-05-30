@@ -16,11 +16,12 @@ namespace MultiFactor.IIS.Adapter
         public bool UseUpnAsIdentity { get; private set; }
         public string[] PhoneAttributes { get; private set; } = new string[0];
 
-        public static Configuration Current { get; private set; }
+        private static readonly Lazy<Configuration> _current = new Lazy<Configuration>(Load);
+        public static Configuration Current => _current.Value;
 
         private Configuration() { }
 
-        public static void Load()
+        private static Configuration Load()
         {
             var appSettings = ConfigurationManager.AppSettings;
 
@@ -44,7 +45,7 @@ namespace MultiFactor.IIS.Adapter
                 throw new Exception("Configuration error: 'multifactor:api-secret' element not found or empty");
             }
 
-            Current = new Configuration
+            var config = new Configuration
             {
                 ApiUrl = apiUrlSetting,
                 ApiKey = apiKeySetting,
@@ -55,11 +56,13 @@ namespace MultiFactor.IIS.Adapter
 
             if (bool.TryParse(useUpnAsIdentitySetting, out var useUpnAsIdentity))
             {
-                Current.UseUpnAsIdentity = useUpnAsIdentity;
+                config.UseUpnAsIdentity = useUpnAsIdentity;
             }
 
-            ReadActiveDirectoryCacheTimoutSetting(appSettings, Current);
-            ReadPhoneAttributeSetting(appSettings, Current);
+            ReadActiveDirectoryCacheTimoutSetting(appSettings, config);
+            ReadPhoneAttributeSetting(appSettings, config);
+
+            return config;
         }
 
         private static void ReadPhoneAttributeSetting(NameValueCollection appSettings, Configuration configuration)
