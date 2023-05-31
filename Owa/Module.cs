@@ -1,4 +1,5 @@
-﻿using MultiFactor.IIS.Adapter.Services;
+﻿using MultiFactor.IIS.Adapter.Core;
+using MultiFactor.IIS.Adapter.Services;
 using System;
 using System.Linq;
 using System.Security.Principal;
@@ -6,68 +7,32 @@ using System.Web;
 
 namespace MultiFactor.IIS.Adapter.Owa
 {
-    public class Module : IHttpModule
+    public class Module : HttpModuleBase
     {
-        private readonly object _sync = new object();
-
-        private MultiFactorApiClient _multiFactorApiClient = new MultiFactorApiClient();
-        private TokenValidationService _tokenValidationService = new TokenValidationService();
-
-        public void Dispose()
+        public override void OnBeginRequest(HttpContextBase context)
         {
-        }
-
-        public void Init(HttpApplication context)
-        {
-            if (Configuration.Current == null)
-            {
-                //load configuration from web.config
-                lock (_sync)
-                {
-                    Configuration.Load();
-                }
-            }
-
-            context.BeginRequest += Context_BeginRequest;
-            context.PostAuthorizeRequest += Context_PostAuthorizeRequest;
-        }
-
-        private void Context_BeginRequest(object sender, EventArgs e)
-        {
-            var context = HttpContext.Current;
             var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
+            if (path.Contains("lang.owa")) return;
 
-            if (!path.Contains("lang.owa"))
+            var token = context.Request.Form["AccessToken"];
+            if (token == null) return;
+            
+            //mfa response
+            var cookie = new HttpCookie(Constants.COOKIE_NAME, token)
             {
-                var token = context.Request.Form["AccessToken"];
+                HttpOnly = true,
+                Secure = true
+            };
 
-                if (token != null)
-                {
-                    //mfa response
-                    var cookie = new HttpCookie(Constants.COOKIE_NAME, token)
-                    {
-                        HttpOnly = true,
-                        Secure = true
-                    };
-
-                    context.Response.Cookies.Add(cookie);
-                    context.Response.Redirect(context.Request.ApplicationPath, true);
-
-                    return;
-                }
-            }
+            context.Response.Cookies.Add(cookie);
+            context.Response.Redirect(context.Request.ApplicationPath, true);
         }
 
-        private void Context_PostAuthorizeRequest(object sender, EventArgs e)
+        public override void OnPostAuthorizeRequest(HttpContextBase context)
         {
-            var context = HttpContext.Current;
             var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
-
             //static resources
-            if (WebUtil.IsStaticResourceRequest(context.Request.Url))
-            {
-                return;
-            }
+            if (WebUtil.IsStaticResourceRequest(context.Request.Url)) return;
 
             //logoff page
             if (path.Contains("logoff.owa"))
@@ -78,34 +43,27 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
 
             //auth page
-            if (path.Contains("/auth"))
-            {
-                return;
-            }
+            if (path.Contains("/auth")) return;
 
             //language selection page
-            if (path.Contains("languageselection.aspx") || path.Contains("lang.owa"))
-            {
-                return;
-            }
+            if (path.Contains("languageselection.aspx") || path.Contains("lang.owa")) return;
 
             if (!context.User.Identity.IsAuthenticated)
             {
                 //not yet authenticated with login/pwd
                 return;
             }
-            var user = context.User.Identity.Name;
 
+            var user = context.User.Identity.Name;
             if (user.StartsWith("S-1-5-21")) //SID
             {
                 user = TryGetUpnFromSid(context.User.Identity);
             }
 
             var canonicalUserName = Util.CanonicalizeUserName(user);
-
-            //system mailbox
             if (Constants.EXCHANGE_SYSTEM_MAILBOX_PREFIX.Any(sm => canonicalUserName.StartsWith(sm)))
             {
+                //system mailbox
                 return;
             }
 
@@ -120,51 +78,35 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            if (!string.IsNullOrEmpty(Configuration.Current.ActiveDirectory2FaGroup))
+            var ad = new ActiveDirectoryService(new CacheService(context), Logger.Owa);
+            var secondFactorRequired = new UserRequiredSecondFactor(ad);
+            if (!secondFactorRequired.Execute(canonicalUserName))
             {
-                //check 2fa group membership
-                var activeDirectory = new ActiveDirectoryService(new CacheService(context));
-                var isMember = activeDirectory.ValidateMembership(canonicalUserName);
-
-                if (!isMember)
-                {
-                    //bypass 2fa
-                    return;
-                }
+                //bypass 2fa
+                return;
             }
 
             //mfa
-            var isAuthenticatedByMultifactor = false;
+            var valSrv = new TokenValidationService(Logger.Owa);
+            var checker = new AuthChecker(context, valSrv);
+            var isAuthenticatedByMultifactor = checker.IsAuthenticated(user);
+            if (isAuthenticatedByMultifactor) return;
 
-            //check MultiFactor cookie
-            var multifactorCookie = context.Request.Cookies[Constants.COOKIE_NAME];
-            if (multifactorCookie != null)
+            if (WebUtil.IsXhrRequest(context.Request))
             {
-                var isValidToken = _tokenValidationService.TryVerifyToken(multifactorCookie.Value, out string userName);
-                if (isValidToken)
-                {
-                    var isValidUser = Util.CanonicalizeUserName(userName) == Util.CanonicalizeUserName(user);
-                    isAuthenticatedByMultifactor = isValidUser;
-                }
+                //ajax request
+                //tell owa to refresh authentication
+                context.Response.StatusCode = 440;
+                context.Response.End();
+                return;
             }
 
-            if (!isAuthenticatedByMultifactor)
-            {
-                if (WebUtil.IsXhrRequest(context.Request)) //ajax request
-                {
-                    //tell owa to refresh authentication
-                    context.Response.StatusCode = 440;
-                    context.Response.End();
-                }
-                else
-                {
-                    //redirect to mfa
-                    context.Response.Redirect(context.Request.ApplicationPath + "/" + Constants.MULTIFACTOR_PAGE);
-                }
-            }
+            //redirect to mfa
+            var redirectUrl = $"{context.Request.ApplicationPath}/{Constants.MULTIFACTOR_PAGE}";
+            context.Response.Redirect(redirectUrl);
         }
 
-        private void ProcessMultifactorRequest(HttpContext context)
+        private void ProcessMultifactorRequest(HttpContextBase context)
         {
             //check if user session timed-out
             if (!context.User.Identity.IsAuthenticated)
@@ -174,30 +116,20 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
 
             var url = context.Request.Form["url"];
-            if (url != null)
+            if (url == null) return;
+            
+            //mfa request
+            if (url.IndexOf("#") == -1)
             {
-                //mfa request
-
-                if (url.IndexOf("#") == -1)
-                {
-                    url += "#path=/mail";
-                }
-
-                var user = context.User.Identity.Name;
-                var identity = user;
-
-                if (Configuration.Current.UseUpnAsIdentity)     //must find upn
-                {
-                    if (!identity.Contains("@"))    //already upn
-                    {
-                        var activeDirectory = new ActiveDirectoryService(new CacheService(context));
-                        identity = activeDirectory.SearchUserPrincipalName(Util.CanonicalizeUserName(identity));
-                    }
-                }
-
-                var multiFactorAccessUrl = _multiFactorApiClient.CreateRequest(identity, user, url);
-                context.Response.Redirect(multiFactorAccessUrl, true);
+                url += "#path=/mail";
             }
+
+            var ad = new ActiveDirectoryService(new CacheService(context), Logger.Owa);
+            var api = new MultiFactorApiClient(Logger.API);
+            var processor = new AccessUrlGetter(ad, api);
+
+            var multiFactorAccessUrl = processor.GetAccessUrl(context.User.Identity.Name, url);
+            context.Response.Redirect(multiFactorAccessUrl, true);
         }
 
         public string TryGetUpnFromSid(IIdentity identity)

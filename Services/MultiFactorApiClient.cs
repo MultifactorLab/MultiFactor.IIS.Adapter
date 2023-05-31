@@ -1,4 +1,4 @@
-﻿using MultiFactor.IIS.Adapter.Owa;
+﻿using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -11,7 +11,14 @@ namespace MultiFactor.IIS.Adapter.Services
     /// </summary>
     public class MultiFactorApiClient
     {
-        public string CreateRequest(string identity, string rawUserName, string postbackUrl)
+        private readonly Logger _logger;
+
+        public MultiFactorApiClient(Logger logger)
+        {
+            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+        }
+
+        public string CreateRequest(string identity, string rawUserName, string postbackUrl, ILdapProfile profile)
         {
             try
             {
@@ -22,6 +29,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 var json = Util.JsonSerialize(new
                 {
                     Identity = identity,
+                    profile.Phone,
                     Callback = new
                     {
                         Action = postbackUrl,
@@ -66,7 +74,7 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (Exception ex)
             {
-                Logger.API.Error(ex.ToString());
+                _logger.Error(ex.ToString());
                 throw new Exception("MultiFactor API error: " + ex.Message);
             }
         }
