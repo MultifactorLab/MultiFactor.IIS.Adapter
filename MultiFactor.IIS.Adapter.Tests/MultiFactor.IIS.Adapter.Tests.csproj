@@ -50,9 +50,11 @@
     <PackageReference Include="coverlet.collector" Version="1.0.1" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ConfigurationTests.cs" />
     <Compile Include="HttpContextMockBuilder.cs" />
     <Compile Include="OwaModuleTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="TestableConfiguration.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MultiFactor.IIS.Adapter.csproj">

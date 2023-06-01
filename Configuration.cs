@@ -19,9 +19,9 @@ namespace MultiFactor.IIS.Adapter
         private static readonly Lazy<Configuration> _current = new Lazy<Configuration>(Load);
         public static Configuration Current => _current.Value;
 
-        private Configuration() { }
+        protected Configuration() { }
 
-        private static Configuration Load()
+        protected static Configuration Load()
         {
             var appSettings = ConfigurationManager.AppSettings;
 
