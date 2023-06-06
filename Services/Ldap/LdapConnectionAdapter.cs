@@ -53,7 +53,7 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap
 
             var searchRequest = new SearchRequest(baseDn, filter, scope, attributes);
 
-            _logger.Info($"Sending search request with params:\r\nbase={baseDn}\r\nfilter={filter}\r\nscope={scope}\r\nattributes={attributes}");
+            _logger.Info($"Sending search request with params:\r\nbase={baseDn}\r\nfilter={filter}\r\nscope={scope}\r\nattributes={string.Join(";", attributes)}");
             return (SearchResponse)_connection.SendRequest(searchRequest);
         }
 
