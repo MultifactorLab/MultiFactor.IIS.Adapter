@@ -9,24 +9,29 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap
     {
         private readonly LdapConnection _connection;
         public FullyQualifiedDomainName Domain { get; }
+        private readonly Logger _logger;
 
-        private LdapConnectionAdapter(LdapConnection connection, FullyQualifiedDomainName domain)
+        private LdapConnectionAdapter(LdapConnection connection, FullyQualifiedDomainName domain, Logger logger)
         {
             _connection = connection;
             Domain = domain;
+            _logger = logger;
         }
 
-        public static LdapConnectionAdapter Create()
+        public static LdapConnectionAdapter Create(Logger logger)
         {
             var domain = IPGlobalProperties.GetIPGlobalProperties().DomainName;
+            logger.Info($"Creating ldap connection to server {domain}");
             var conn = new LdapConnection(domain);
 
             conn.SessionOptions.RootDseCache = true;
             conn.SessionOptions.ProtocolVersion = 3;
             conn.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
+
+            logger.Info($"Binding current user to connection for server {domain}");
             conn.Bind(); //as current user
 
-            return new LdapConnectionAdapter(conn, new FullyQualifiedDomainName(domain));
+            return new LdapConnectionAdapter(conn, new FullyQualifiedDomainName(domain), logger);
         }
 
         public SearchResponse Search(string baseDn, string filter, SearchScope scope, params string[] attributes)
@@ -48,6 +53,7 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap
 
             var searchRequest = new SearchRequest(baseDn, filter, scope, attributes);
 
+            _logger.Info($"Sending search request with params:\r\nbase={baseDn}\r\nfilter={filter}\r\nscope={scope}\r\nattributes={attributes}");
             return (SearchResponse)_connection.SendRequest(searchRequest);
         }
 
