@@ -27,13 +27,26 @@ namespace MultiFactor.IIS.Adapter.Services
             var profile = _cache.GetProfile(samAccountName);
             if (profile != null) return profile;
 
-            using (var adapter = LdapConnectionAdapter.Create())
+            try
             {
-                var loader = new ProfileLoader(adapter, _logger);
-                profile = loader.Load(samAccountName);
+                using (var adapter = LdapConnectionAdapter.Create(_logger))
+                {
+                    var loader = new ProfileLoader(adapter, _logger);
+                    profile = loader.Load(samAccountName);
 
-                _cache.SetProfile(samAccountName, profile);
-                return profile;
+                    _cache.SetProfile(samAccountName, profile);
+                    return profile;
+                }
+            }
+            catch (LdapException ex)
+            {
+                _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
+                throw;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.ToString());
+                throw;
             }
         }
 
@@ -60,7 +73,7 @@ namespace MultiFactor.IIS.Adapter.Services
 
             try
             {
-                using (var adapter = LdapConnectionAdapter.Create())
+                using (var adapter = LdapConnectionAdapter.Create(_logger))
                 {
                     var baseDn = adapter.Domain.GetDn();
                     var groupDn = _cache.GetGroupDn(groupName);
@@ -85,6 +98,10 @@ namespace MultiFactor.IIS.Adapter.Services
                     return response.Entries.Count != 0;
                 }
             }
+            catch (LdapException ex)
+            {
+                _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
+            }
             catch (Exception ex)
             {
                 _logger.Error(ex.ToString());
@@ -99,7 +116,7 @@ namespace MultiFactor.IIS.Adapter.Services
 
             try
             {
-                using (var adapter = LdapConnectionAdapter.Create())
+                using (var adapter = LdapConnectionAdapter.Create(_logger))
                 {
                     var searchFilter = $"(&(sAMAccountName={samAccountName})(objectClass=user))";
                     var response = adapter.Search(adapter.Domain.GetDn(), searchFilter, SearchScope.Subtree, attr);
@@ -107,6 +124,10 @@ namespace MultiFactor.IIS.Adapter.Services
                     
                     return response.Entries[0].Attributes[attr]?[0]?.ToString();
                 }
+            }
+            catch (LdapException ex)
+            {
+                _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
             }
             catch (Exception ex)
             {

@@ -35,6 +35,10 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
                 SetPhone(profile, response);
                 SetUpn(profile, response);
             }
+            catch (LdapException ex)
+            {
+                _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
+            }
             catch (Exception ex)
             {
                 _logger.Error(ex.ToString());
