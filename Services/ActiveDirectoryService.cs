@@ -40,7 +40,7 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (LdapException ex)
             {
-                _logger.Error($"{ex}\r\nLDAPErrorCore={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
+                _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
                 throw;
             }
             catch (Exception ex)
@@ -100,7 +100,7 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (LdapException ex)
             {
-                _logger.Error($"{ex}\r\nLDAPErrorCore={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
+                _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
             }
             catch (Exception ex)
             {
@@ -127,7 +127,7 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (LdapException ex)
             {
-                _logger.Error($"{ex}\r\nLDAPErrorCore={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
+                _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
             }
             catch (Exception ex)
             {

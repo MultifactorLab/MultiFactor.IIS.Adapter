@@ -1,7 +1,6 @@
 ﻿using MultiFactor.IIS.Adapter.Core;
 using System;
 using System.DirectoryServices.Protocols;
-using System.Net.NetworkInformation;
 
 namespace MultiFactor.IIS.Adapter.Services.Ldap
 {
@@ -20,6 +19,11 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap
 
         public static LdapConnectionAdapter Create(Logger logger)
         {
+            if (logger == null)
+            {
+                throw new ArgumentNullException(nameof(logger));
+            }
+
             var adDomain = System.DirectoryServices.ActiveDirectory.Domain.GetComputerDomain().Name;
             logger.Info($"Creating ldap connection to server {adDomain}");
             var conn = new LdapConnection(adDomain);
