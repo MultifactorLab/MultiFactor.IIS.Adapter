@@ -10,6 +10,7 @@ namespace MultiFactor.IIS.Adapter.Tests
             ConfigurationManager.AppSettings["multifactor:api-url"] = "api.multifactor.ru";
             ConfigurationManager.AppSettings["multifactor:api-key"] = "key";
             ConfigurationManager.AppSettings["multifactor:api-secret"] = "secret";
+            ConfigurationManager.AppSettings["multifactor:bypass-second-factor-when-api-unreachable"] = true.ToString();
 
             ConfigurationManager.AppSettings["multifactor:api-proxy"] = null;
             ConfigurationManager.AppSettings["multifactor:active-directory-2fa-group"] = null;

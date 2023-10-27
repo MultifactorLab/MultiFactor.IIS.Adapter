@@ -1,4 +1,5 @@
 ﻿using MultiFactor.IIS.Adapter.Core;
+using MultiFactor.IIS.Adapter.Exceptions;
 using MultiFactor.IIS.Adapter.Owa;
 using MultiFactor.IIS.Adapter.Services;
 using System;
@@ -107,8 +108,21 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             var api = new MultiFactorApiClient(Logger.API);
             var processor = new AccessUrlGetter(ad, api);
 
-            var multiFactorAccessUrl = processor.GetAccessUrl(context.User.Identity.Name, url);
-            context.Response.Redirect(multiFactorAccessUrl, true);
+            try
+            {
+                var multiFactorAccessUrl = processor.GetAccessUrl(context.User.Identity.Name, url);
+                context.Response.Redirect(multiFactorAccessUrl, true);
+            }
+            catch (Exception ex)
+            {
+                if (ex is MultifactorApiUnreachableException && Configuration.Current.BypassSecondFactorWhenApiUnreachable)
+                {
+                    Logger.IIS.Warn($"Bypassing the second factor for user '{context.User.Identity.Name}' due to an API error '{ex.Message}'");
+                    return;
+                }
+
+                throw;
+            }
         }
 
         private string GetWebAppRoot()

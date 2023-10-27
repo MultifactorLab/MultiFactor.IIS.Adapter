@@ -1,4 +1,5 @@
-﻿using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
+﻿using MultiFactor.IIS.Adapter.Exceptions;
+using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -45,20 +46,20 @@ namespace MultiFactor.IIS.Adapter.Services
                 byte[] responseData = null;
 
                 //basic authorization
-                var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes(Configuration.Current.ApiKey + ":" + Configuration.Current.ApiSecret));
+                var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
 
 
                 using (var web = new WebClient())
                 {
                     web.Headers.Add("Content-Type", "application/json");
-                    web.Headers.Add("Authorization", "Basic " + auth);
+                    web.Headers.Add("Authorization", $"Basic {auth}");
 
                     if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
                     {
                         web.Proxy = new WebProxy(Configuration.Current.ApiProxy);
                     }
 
-                    responseData = web.UploadData(Configuration.Current.ApiUrl + "/access/requests", "POST", requestData);
+                    responseData = web.UploadData($"{Configuration.Current.ApiUrl}/access/requests", "POST", requestData);
                 }
 
                 json = Encoding.UTF8.GetString(responseData);
@@ -75,7 +76,7 @@ namespace MultiFactor.IIS.Adapter.Services
             catch (Exception ex)
             {
                 _logger.Error(ex.ToString());
-                throw new Exception("MultiFactor API error: " + ex.Message);
+                throw new MultifactorApiUnreachableException($"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {ex.Message}", ex);
             }
         }
     }

@@ -1,4 +1,5 @@
 ﻿using MultiFactor.IIS.Adapter.Core;
+using MultiFactor.IIS.Adapter.Exceptions;
 using MultiFactor.IIS.Adapter.Services;
 using System;
 using System.Linq;
@@ -128,8 +129,21 @@ namespace MultiFactor.IIS.Adapter.Owa
             var api = new MultiFactorApiClient(Logger.API);
             var processor = new AccessUrlGetter(ad, api);
 
-            var multiFactorAccessUrl = processor.GetAccessUrl(context.User.Identity.Name, url);
-            context.Response.Redirect(multiFactorAccessUrl, true);
+            try
+            {
+                var multiFactorAccessUrl = processor.GetAccessUrl(context.User.Identity.Name, url);
+                context.Response.Redirect(multiFactorAccessUrl, true);
+            }
+            catch (Exception ex)
+            {
+                if (ex is MultifactorApiUnreachableException && Configuration.Current.BypassSecondFactorWhenApiUnreachable)
+                {
+                    Logger.Owa.Warn($"Bypassing the second factor for user '{context.User.Identity.Name}' due to an API error '{ex.Message}'");
+                    return;
+                }
+
+                throw;
+            } 
         }
 
         public string TryGetUpnFromSid(IIdentity identity)

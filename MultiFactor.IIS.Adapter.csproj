@@ -67,6 +67,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Configuration.cs" />
+    <Compile Include="ConfigurationKeys.cs" />
+    <Compile Include="Exceptions\MultifactorApiUnreachableException.cs" />
     <Compile Include="MsDynamics365\Module.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Core\HttpModuleBase.cs" />
