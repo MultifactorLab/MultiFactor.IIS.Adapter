@@ -3,7 +3,7 @@
 namespace MultiFactor.IIS.Adapter.Exceptions
 {
     [Serializable]
-    internal class MultifactorApiUnreachableException : Exception
+    public class MultifactorApiUnreachableException : Exception
     {
         public MultifactorApiUnreachableException() { }
         public MultifactorApiUnreachableException(string message) : base(message) { }

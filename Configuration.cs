@@ -72,7 +72,10 @@ namespace MultiFactor.IIS.Adapter
         private static void ReadPhoneAttributeSetting(NameValueCollection appSettings, Configuration configuration)
         {
             var value = appSettings[ConfigurationKeys.PhoneAttribute];
-            if (string.IsNullOrWhiteSpace(value)) return;
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
 
             var parsed = value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(attr => attr.Trim()).ToArray();
             if (parsed.Length != 0) configuration.PhoneAttributes = parsed;     
@@ -97,6 +100,7 @@ namespace MultiFactor.IIS.Adapter
             if (string.IsNullOrEmpty(value))
             {
                 configuration.BypassSecondFactorWhenApiUnreachable = true;
+                return;
             }
 
             if (!bool.TryParse(value, out var parsed))
