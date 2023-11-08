@@ -68,8 +68,7 @@
   <ItemGroup>
     <Compile Include="Configuration.cs" />
     <Compile Include="ConfigurationKeys.cs" />
-    <Compile Include="Extensions\GetCacheAdapterExtension.cs" />
-    <Compile Include="Extensions\HasApiUnreachableExtension.cs" />
+    <Compile Include="Extensions\HttpContextBaseExtensions.cs" />
     <Compile Include="MsDynamics365\Module.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Core\HttpModuleBase.cs" />

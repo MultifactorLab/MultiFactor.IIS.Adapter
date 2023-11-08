@@ -2,18 +2,18 @@
 
 namespace MultiFactor.IIS.Adapter.Services
 {
-    public class AccessUrlGetter
+    public class AccessUrl
     {
         private readonly ActiveDirectoryService _activeDirectory;
         private readonly MultiFactorApiClient _api;
 
-        public AccessUrlGetter(ActiveDirectoryService activeDirectory, MultiFactorApiClient api)
+        public AccessUrl(ActiveDirectoryService activeDirectory, MultiFactorApiClient api)
         {
             _activeDirectory = activeDirectory ?? throw new ArgumentNullException(nameof(activeDirectory));
             _api = api ?? throw new ArgumentNullException(nameof(api));
         }
 
-        public string GetAccessUrl(string rawUsername, string postbackUrl) 
+        public string Get(string rawUsername, string postbackUrl) 
         {
             var identity = rawUsername;
             var profile = _activeDirectory.GetProfile(Util.CanonicalizeUserName(identity));

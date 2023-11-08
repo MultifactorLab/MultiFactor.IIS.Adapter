@@ -15,7 +15,7 @@ namespace MultiFactor.IIS.Adapter.Services
 
             var ad = new ActiveDirectoryService(context.GetCacheAdapter(), Logger.Owa);
             var api = new MultiFactorApiClient(Logger.API);
-            var getter = new AccessUrlGetter(ad, api);
+            var getter = new AccessUrl(ad, api);
 
             return new MfaApiRequestExecutor(context, getter, Logger.Owa);
         }
@@ -29,7 +29,7 @@ namespace MultiFactor.IIS.Adapter.Services
 
             var ad = new ActiveDirectoryService(context.GetCacheAdapter(), Logger.IIS);
             var api = new MultiFactorApiClient(Logger.API);
-            var getter = new AccessUrlGetter(ad, api);
+            var getter = new AccessUrl(ad, api);
 
             return new MfaApiRequestExecutor(context, getter, Logger.IIS);
         }
