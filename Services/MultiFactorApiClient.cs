@@ -1,5 +1,4 @@
-﻿using MultiFactor.IIS.Adapter.Exceptions;
-using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
+﻿using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
 using System;
 using System.Collections.Generic;
 using System.Net;
@@ -27,7 +26,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
                 //payload
-                var json = Util.JsonSerialize(new
+                var payload = Util.JsonSerialize(new
                 {
                     Identity = identity,
                     profile.Phone,
@@ -42,7 +41,7 @@ namespace MultiFactor.IIS.Adapter.Services
                     }
                 });
 
-                var requestData = Encoding.UTF8.GetBytes(json);
+                var requestData = Encoding.UTF8.GetBytes(payload);
                 byte[] responseData = null;
 
                 //basic authorization
@@ -62,12 +61,11 @@ namespace MultiFactor.IIS.Adapter.Services
                     responseData = web.UploadData($"{Configuration.Current.ApiUrl}/access/requests", "POST", requestData);
                 }
 
-                json = Encoding.UTF8.GetString(responseData);
-
-                var response = Util.JsonDeserialize<MultiFactorWebResponse<MultiFactorAccessPage>>(json);
-
+                var responseJson = Encoding.UTF8.GetString(responseData);
+                var response = Util.JsonDeserialize<MultiFactorWebResponse<MultiFactorAccessPage>>(responseJson);
                 if (!response.Success)
                 {
+                    _logger.Error($"Got unsuccessful response from API: {responseJson}");
                     throw new Exception(response.Message);
                 }
 
@@ -75,8 +73,9 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (Exception ex)
             {
-                _logger.Error(ex.ToString());
-                throw new MultifactorApiUnreachableException($"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {ex.Message}", ex);
+                var errmsg = $"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {ex.Message}";
+                _logger.Error(errmsg);
+                throw new Exception($"{Constants.API_UNREACHABLE_CODE} {errmsg}", ex);
             }
         }
     }

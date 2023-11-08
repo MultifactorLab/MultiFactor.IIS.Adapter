@@ -1,6 +1,6 @@
 ﻿namespace MultiFactor.IIS.Adapter
 {
-    internal static class ConfigurationKeys
+    public static class ConfigurationKeys
     {
         private const string _prefix = "multifactor";
 
@@ -13,6 +13,7 @@
         public static readonly string ActiveDirectory2FAGroup = $"{_prefix}:active-directory-2fa-group";
         public static readonly string ActiveDirectory2FAGroupMembershipCacheTimeout = $"{_prefix}:active-directory-2fa-group-membership-cache-timeout";
         public static readonly string ActiveDirectoryCacheTimeout = $"{_prefix}:active-directory-cache-timeout";
+        public static readonly string ApiLifeCheckInterval = $"{_prefix}:api-life-check-interval";
 
         public static readonly string UseUpnAsIdentity = $"{_prefix}:use-upn-as-identity";
         public static readonly string PhoneAttribute = $"{_prefix}:phone-attribute";

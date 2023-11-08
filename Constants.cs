@@ -15,5 +15,7 @@
             "migration",
             "systemmailbox"
         };
+
+        public const string API_UNREACHABLE_CODE = "mfapi:0001";
     }
 }

@@ -11,10 +11,10 @@ namespace MultiFactor.IIS.Adapter.Services
     /// </summary>
     public class ActiveDirectoryService
     {
-        private CacheService _cache;
+        private CacheAdapter _cache;
         private readonly Logger _logger;
 
-        public ActiveDirectoryService(CacheService cache, Logger logger)
+        public ActiveDirectoryService(CacheAdapter cache, Logger logger)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));

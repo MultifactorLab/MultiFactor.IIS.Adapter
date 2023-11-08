@@ -1,5 +1,5 @@
 ﻿using MultiFactor.IIS.Adapter.Core;
-using MultiFactor.IIS.Adapter.Exceptions;
+using MultiFactor.IIS.Adapter.Extensions;
 using MultiFactor.IIS.Adapter.Services;
 using System;
 using System.Linq;
@@ -13,11 +13,17 @@ namespace MultiFactor.IIS.Adapter.Owa
         public override void OnBeginRequest(HttpContextBase context)
         {
             var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
-            if (path.Contains("lang.owa")) return;
+            if (path.Contains("lang.owa"))
+            {
+                return;
+            }
 
             var token = context.Request.Form["AccessToken"];
-            if (token == null) return;
-            
+            if (token == null)
+            {
+                return;
+            }
+
             //mfa response
             var cookie = new HttpCookie(Constants.COOKIE_NAME, token)
             {
@@ -32,8 +38,12 @@ namespace MultiFactor.IIS.Adapter.Owa
         public override void OnPostAuthorizeRequest(HttpContextBase context)
         {
             var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
+            Logger.Owa.Info($"OnPostAuthorizeRequest path = {path}");
             //static resources
-            if (WebUtil.IsStaticResourceRequest(context.Request.Url)) return;
+            if (WebUtil.IsStaticResourceRequest(context.Request.Url))
+            {
+                return;
+            }
 
             //logoff page
             if (path.Contains("logoff.owa"))
@@ -44,7 +54,10 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
 
             //auth page
-            if (path.Contains("/auth")) return;
+            if (path.Contains("/auth"))
+            {
+                return;
+            }
 
             //language selection page
             if (path.Contains("languageselection.aspx") || path.Contains("lang.owa")) return;
@@ -79,7 +92,7 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            var ad = new ActiveDirectoryService(new CacheService(context), Logger.Owa);
+            var ad = new ActiveDirectoryService(context.GetCacheAdapter(), Logger.Owa);
             var secondFactorRequired = new UserRequiredSecondFactor(ad);
             if (!secondFactorRequired.Execute(canonicalUserName))
             {
@@ -91,7 +104,10 @@ namespace MultiFactor.IIS.Adapter.Owa
             var valSrv = new TokenValidationService(Logger.Owa);
             var checker = new AuthChecker(context, valSrv);
             var isAuthenticatedByMultifactor = checker.IsAuthenticated(user);
-            if (isAuthenticatedByMultifactor) return;
+            if (isAuthenticatedByMultifactor || context.HasApiUnreachableFlag())
+            {
+                return;
+            }
 
             if (WebUtil.IsXhrRequest(context.Request))
             {
@@ -117,33 +133,19 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
 
             var url = context.Request.Form["url"];
-            if (url == null) return;
-            
+            if (url == null)
+            {
+                return;
+            }
+
             //mfa request
             if (url.IndexOf("#") == -1)
             {
                 url += "#path=/mail";
             }
 
-            var ad = new ActiveDirectoryService(new CacheService(context), Logger.Owa);
-            var api = new MultiFactorApiClient(Logger.API);
-            var processor = new AccessUrlGetter(ad, api);
-
-            try
-            {
-                var multiFactorAccessUrl = processor.GetAccessUrl(context.User.Identity.Name, url);
-                context.Response.Redirect(multiFactorAccessUrl, true);
-            }
-            catch (Exception ex)
-            {
-                if (ex is MultifactorApiUnreachableException && Configuration.Current.BypassSecondFactorWhenApiUnreachable)
-                {
-                    Logger.Owa.Warn($"Bypassing the second factor for user '{context.User.Identity.Name}' due to an API error '{ex.Message}'");
-                    return;
-                }
-
-                throw;
-            } 
+            var executor = MfaApiRequestExecutorFactory.CreateOwa(context);
+            executor.Execute(url, context.Request.ApplicationPath);
         }
 
         public string TryGetUpnFromSid(IIdentity identity)
@@ -159,7 +161,11 @@ namespace MultiFactor.IIS.Adapter.Owa
         {
             try
             {
-                if (src == null) return null;
+                if (src == null)
+                {
+                    return null;
+                }
+
                 return src.GetType().GetProperty(propName).GetValue(src, null);
             }
             catch

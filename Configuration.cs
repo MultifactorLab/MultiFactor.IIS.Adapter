@@ -14,7 +14,8 @@ namespace MultiFactor.IIS.Adapter
         public bool BypassSecondFactorWhenApiUnreachable { get; private set; }
 
         public string ActiveDirectory2FaGroup { get; private set; }
-        public int ActiveDirectoryCacheTimout { get; private set; }        
+        public TimeSpan ActiveDirectoryCacheTimout { get; private set; }        
+        public TimeSpan ApiLifeCheckInterval { get; private set; }        
         public bool UseUpnAsIdentity { get; private set; }
         public string[] PhoneAttributes { get; private set; } = new string[0];
 
@@ -65,6 +66,7 @@ namespace MultiFactor.IIS.Adapter
             ReadActiveDirectoryCacheTimoutSetting(appSettings, config);
             ReadPhoneAttributeSetting(appSettings, config);
             ReadBypassWhenApiUnreachableSetting(appSettings, config);
+            ReadApiLifeCheckIntervalSetting(appSettings, config);
 
             return config;
         }
@@ -83,15 +85,34 @@ namespace MultiFactor.IIS.Adapter
 
         private static void ReadActiveDirectoryCacheTimoutSetting(NameValueCollection appSettings, Configuration configuration)
         {
-            int ttl = -1;
+            var ttl = TimeSpan.Zero;
 
             var legacyValue = appSettings[ConfigurationKeys.ActiveDirectory2FAGroupMembershipCacheTimeout];
-            if (int.TryParse(legacyValue, out var legVal)) ttl = legVal;
+            if (int.TryParse(legacyValue, out var legVal)) ttl = TimeSpan.FromMinutes(legVal);
             
             var value = appSettings[ConfigurationKeys.ActiveDirectoryCacheTimeout];
-            if (int.TryParse(value, out var val)) ttl = val;
+            if (int.TryParse(value, out var val)) ttl = TimeSpan.FromMinutes(val);
             
-            configuration.ActiveDirectoryCacheTimout = ttl;
+            configuration.ActiveDirectoryCacheTimout = ttl > TimeSpan.Zero ? ttl : TimeSpan.FromMinutes(15);
+        }
+        
+        private static void ReadApiLifeCheckIntervalSetting(NameValueCollection appSettings, Configuration configuration)
+        {
+            var defaultValue = TimeSpan.FromMinutes(15);
+
+            var value = appSettings[ConfigurationKeys.ApiLifeCheckInterval];
+            if (string.IsNullOrEmpty(value))
+            {
+                configuration.ApiLifeCheckInterval = defaultValue;
+                return;
+            }
+
+            if (!int.TryParse(value, out var parsed))
+            {
+                throw new Exception($"Configuration error: '{ConfigurationKeys.ApiLifeCheckInterval}' element has invalid value");
+            }
+
+            configuration.ApiLifeCheckInterval = parsed > 0 ? TimeSpan.FromMinutes(parsed) : defaultValue;
         }
         
         private static void ReadBypassWhenApiUnreachableSetting(NameValueCollection appSettings, Configuration configuration)
