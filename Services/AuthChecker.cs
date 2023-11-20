@@ -14,15 +14,21 @@ namespace MultiFactor.IIS.Adapter.Services
             _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
         }
 
-        public bool IsAuthenticated(string user)
+        public bool IsAuthenticated(string rawUsername)
         {
             var multifactorCookie = _context.Request.Cookies[Constants.COOKIE_NAME];
-            if (multifactorCookie == null) return false;
+            if (multifactorCookie == null)
+            {
+                return false;
+            }
 
             var isValidToken = _validationService.TryVerifyToken(multifactorCookie.Value, out string userName);
-            if (!isValidToken) return false;
+            if (!isValidToken)
+            {
+                return false;
+            }
 
-            return Util.CanonicalizeUserName(userName) == Util.CanonicalizeUserName(user);
+            return Util.CanonicalizeUserName(userName) == Util.CanonicalizeUserName(rawUsername);
         }
     }
 }

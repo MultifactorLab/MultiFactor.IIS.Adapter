@@ -1,4 +1,5 @@
-﻿using System.Configuration;
+﻿using System;
+using System.Configuration;
 using Xunit;
 
 namespace MultiFactor.IIS.Adapter.Tests
@@ -7,47 +8,49 @@ namespace MultiFactor.IIS.Adapter.Tests
     {
         private static void ResetSettings()
         {
-            ConfigurationManager.AppSettings["multifactor:api-url"] = "api.multifactor.ru";
-            ConfigurationManager.AppSettings["multifactor:api-key"] = "key";
-            ConfigurationManager.AppSettings["multifactor:api-secret"] = "secret";
+            ConfigurationManager.AppSettings[ConfigurationKeys.ApiUrl] = "api.multifactor.ru";
+            ConfigurationManager.AppSettings[ConfigurationKeys.ApiKey] = "key";
+            ConfigurationManager.AppSettings[ConfigurationKeys.ApiSecret] = "secret";
+            ConfigurationManager.AppSettings[ConfigurationKeys.BypassSecondFactorWhenApiUnreachable] = true.ToString();
 
-            ConfigurationManager.AppSettings["multifactor:api-proxy"] = null;
-            ConfigurationManager.AppSettings["multifactor:active-directory-2fa-group"] = null;
-            ConfigurationManager.AppSettings["multifactor:use-upn-as-identity"] = null;
-            ConfigurationManager.AppSettings["multifactor:phone-attribute"] = null;
-            ConfigurationManager.AppSettings["multifactor:active-directory-2fa-group-membership-cache-timeout"] = null;
-            ConfigurationManager.AppSettings["multifactor:active-directory-cache-timeout"] = null;
+            ConfigurationManager.AppSettings[ConfigurationKeys.ApiProxy] = null;
+            ConfigurationManager.AppSettings[ConfigurationKeys.ActiveDirectory2FAGroup] = null;
+            ConfigurationManager.AppSettings[ConfigurationKeys.UseUpnAsIdentity] = null;
+            ConfigurationManager.AppSettings[ConfigurationKeys.PhoneAttribute] = null;
+            ConfigurationManager.AppSettings[ConfigurationKeys.ActiveDirectory2FAGroupMembershipCacheTimeout] = null;
+            ConfigurationManager.AppSettings[ConfigurationKeys.ActiveDirectoryCacheTimeout] = null;
+            ConfigurationManager.AppSettings[ConfigurationKeys.ApiLifeCheckInterval] = null;
         }
 
         [Fact]
         public void AdCache_UseLegacySetting_ShouldReturnLegacyValue()
         {
             ResetSettings();
-            ConfigurationManager.AppSettings["multifactor:active-directory-2fa-group-membership-cache-timeout"] = "15";
+            ConfigurationManager.AppSettings[ConfigurationKeys.ActiveDirectory2FAGroupMembershipCacheTimeout] = "15";
             var curr = TestableConfiguration.Reload();
 
-            Assert.Equal(15, curr.ActiveDirectoryCacheTimout);
+            Assert.Equal(15, curr.ActiveDirectoryCacheTimout.TotalMinutes);
         }
         
         [Fact]
         public void AdCache_UseNewSetting_ShouldReturnNewValue()
         {
             ResetSettings();
-            ConfigurationManager.AppSettings["multifactor:active-directory-cache-timeout"] = "8";
+            ConfigurationManager.AppSettings[ConfigurationKeys.ActiveDirectoryCacheTimeout] = "8";
             var curr = TestableConfiguration.Reload();
 
-            Assert.Equal(8, curr.ActiveDirectoryCacheTimout);
+            Assert.Equal(8, curr.ActiveDirectoryCacheTimout.TotalMinutes);
         }
         
         [Fact]
         public void AdCache_UseBothNewAndLegacySetting_ShouldReturnNewValue()
         {
             ResetSettings();
-            ConfigurationManager.AppSettings["multifactor:active-directory-cache-timeout"] = "8";
-            ConfigurationManager.AppSettings["multifactor:active-directory-2fa-group-membership-cache-timeout"] = "15";
+            ConfigurationManager.AppSettings[ConfigurationKeys.ActiveDirectoryCacheTimeout] = "8";
+            ConfigurationManager.AppSettings[ConfigurationKeys.ActiveDirectory2FAGroupMembershipCacheTimeout] = "15";
             var curr = TestableConfiguration.Reload();
 
-            Assert.Equal(8, curr.ActiveDirectoryCacheTimout);
+            Assert.Equal(8, curr.ActiveDirectoryCacheTimout.TotalMinutes);
         }
         
         [Fact]
@@ -56,7 +59,21 @@ namespace MultiFactor.IIS.Adapter.Tests
             ResetSettings();
             var curr = TestableConfiguration.Reload();
 
-            Assert.Equal(-1, curr.ActiveDirectoryCacheTimout);
+            Assert.Equal(TimeSpan.FromMinutes(15), curr.ActiveDirectoryCacheTimout);
+        }
+        
+        [Theory]
+        [InlineData("")]
+        [InlineData(null)]
+        [InlineData("0")]
+        [InlineData("-1")]
+        public void ApiLifeCheckInterval_ShouldReturnDefaultValue(string val)
+        {
+            ResetSettings();
+            ConfigurationManager.AppSettings[ConfigurationKeys.ApiLifeCheckInterval] = val;
+            var curr = TestableConfiguration.Reload();
+
+            Assert.Equal(TimeSpan.FromMinutes(15), curr.ActiveDirectoryCacheTimout);
         }
     }
 }

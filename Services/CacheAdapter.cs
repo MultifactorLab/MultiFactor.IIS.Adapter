@@ -5,18 +5,18 @@ using System.Web.Caching;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
-    public class CacheService
+    public class CacheAdapter
     {
-        const int GROUP_DN_CACHE_TIMEOUT = 60;
-        const int AD_CACHE_TIMEOUT = 15;
+        private static readonly TimeSpan GROUP_DN_CACHE_TIMEOUT = TimeSpan.FromMinutes(60);
         const string KEY_PREFIX = "multifactor";
         const string IS_2FA_KEY = "is2fa";
         const string DN_KEY = "dn";
         const string PROFILE_KEY = "profile";
+        const string API_UNREACHABLE = "api-unreachable";
 
         private readonly HttpContextBase _context;
 
-        public CacheService(HttpContextBase context)
+        public CacheAdapter(HttpContextBase context)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
@@ -54,7 +54,7 @@ namespace MultiFactor.IIS.Adapter.Services
             var key = $"{KEY_PREFIX}:{IS_2FA_KEY}:{user}";
             var val = isMember ? "1" : "0";
 
-            SetItem(key, val, GetTtl());
+            SetItem(key, val, Configuration.Current.ActiveDirectoryCacheTimout);
         }
 
         public ILdapProfile GetProfile(string user)
@@ -66,7 +66,19 @@ namespace MultiFactor.IIS.Adapter.Services
         public void SetProfile(string user, ILdapProfile profile)
         {
             var key = $"{KEY_PREFIX}:{PROFILE_KEY}:{user}";
-            SetItem(key, profile, GetTtl());
+            SetItem(key, profile, Configuration.Current.ActiveDirectoryCacheTimout);
+        }
+
+        public bool GetApiUnreachable(string user)
+        {
+            var key = $"{KEY_PREFIX}:{API_UNREACHABLE}:{user}";
+            return GetItem<bool>(key);
+        }
+
+        public void SetApiUnreachable(string user, bool bypass)
+        {
+            var key = $"{KEY_PREFIX}:{API_UNREACHABLE}:{user}";
+            SetItem(key, bypass, Configuration.Current.ApiLifeCheckInterval);
         }
 
         private string GetItem(string key)
@@ -81,21 +93,14 @@ namespace MultiFactor.IIS.Adapter.Services
             return default;
         }
 
-        private void SetItem(string key, string value, int ttl)
+        private void SetItem(string key, string value, TimeSpan ttl)
         {
-            _context.Cache.Add(key, value, null, DateTime.Now.AddMinutes(ttl), Cache.NoSlidingExpiration, CacheItemPriority.Default, null);
+            _context.Cache.Add(key, value, null, DateTime.Now.Add(ttl), Cache.NoSlidingExpiration, CacheItemPriority.Default, null);
         }
         
-        private void SetItem<T>(string key, T value, int ttl)
+        private void SetItem<T>(string key, T value, TimeSpan ttl)
         {
-            _context.Cache.Add(key, value, null, DateTime.Now.AddMinutes(ttl), Cache.NoSlidingExpiration, CacheItemPriority.Default, null);
-        }
-
-        private int GetTtl()
-        {
-            return Configuration.Current.ActiveDirectoryCacheTimout != -1
-                ? Configuration.Current.ActiveDirectoryCacheTimout
-                : AD_CACHE_TIMEOUT;
+            _context.Cache.Add(key, value, null, DateTime.Now.Add(ttl), Cache.NoSlidingExpiration, CacheItemPriority.Default, null);
         }
     }
 }

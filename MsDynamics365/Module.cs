@@ -1,4 +1,5 @@
 ﻿using MultiFactor.IIS.Adapter.Core;
+using MultiFactor.IIS.Adapter.Extensions;
 using MultiFactor.IIS.Adapter.Owa;
 using MultiFactor.IIS.Adapter.Services;
 using System;
@@ -63,7 +64,7 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
                 return;
             }
 
-            var ad = new ActiveDirectoryService(new CacheService(context), Logger.IIS);
+            var ad = new ActiveDirectoryService(context.GetCacheAdapter(), Logger.IIS);
             var secondFactorRequired = new UserRequiredSecondFactor(ad);
             if (!secondFactorRequired.Execute(canonicalUserName))
             {
@@ -75,8 +76,11 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             var valSrv = new TokenValidationService(Logger.IIS);
             var checker = new AuthChecker(context, valSrv);
             var isAuthenticatedByMultifactor = checker.IsAuthenticated(user);
-            if (isAuthenticatedByMultifactor) return;
-            
+            if (isAuthenticatedByMultifactor || context.HasApiUnreachableFlag())
+            {
+                return;
+            }
+
             if (WebUtil.IsXhrRequest(context.Request)) //ajax request
             {
                 //tell app to refresh authentication
@@ -100,15 +104,18 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             }
 
             var url = context.Request.Form["url"];
-            if (url == null) return;
+            if (url == null)
+            {
+                return;
+            }
 
-            //mfa request
-            var ad = new ActiveDirectoryService(new CacheService(context), Logger.IIS);
-            var api = new MultiFactorApiClient(Logger.API);
-            var processor = new AccessUrlGetter(ad, api);
+            var executor = MfaApiRequestExecutorFactory.CreateIIS(context);
+            executor.Execute(url, GetWebAppRoot());
+        }
 
-            var multiFactorAccessUrl = processor.GetAccessUrl(context.User.Identity.Name, url);
-            context.Response.Redirect(multiFactorAccessUrl, true);
+        private static bool NeedToBypass(Exception ex)
+        {
+            return ex.Message?.StartsWith(Constants.API_UNREACHABLE_CODE) == true && Configuration.Current.BypassSecondFactorWhenApiUnreachable;
         }
 
         private string GetWebAppRoot()

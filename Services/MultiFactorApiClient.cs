@@ -26,7 +26,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
 
                 //payload
-                var json = Util.JsonSerialize(new
+                var payload = Util.JsonSerialize(new
                 {
                     Identity = identity,
                     profile.Phone,
@@ -41,32 +41,31 @@ namespace MultiFactor.IIS.Adapter.Services
                     }
                 });
 
-                var requestData = Encoding.UTF8.GetBytes(json);
+                var requestData = Encoding.UTF8.GetBytes(payload);
                 byte[] responseData = null;
 
                 //basic authorization
-                var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes(Configuration.Current.ApiKey + ":" + Configuration.Current.ApiSecret));
+                var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
 
 
                 using (var web = new WebClient())
                 {
                     web.Headers.Add("Content-Type", "application/json");
-                    web.Headers.Add("Authorization", "Basic " + auth);
+                    web.Headers.Add("Authorization", $"Basic {auth}");
 
                     if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
                     {
                         web.Proxy = new WebProxy(Configuration.Current.ApiProxy);
                     }
 
-                    responseData = web.UploadData(Configuration.Current.ApiUrl + "/access/requests", "POST", requestData);
+                    responseData = web.UploadData($"{Configuration.Current.ApiUrl}/access/requests", "POST", requestData);
                 }
 
-                json = Encoding.UTF8.GetString(responseData);
-
-                var response = Util.JsonDeserialize<MultiFactorWebResponse<MultiFactorAccessPage>>(json);
-
+                var responseJson = Encoding.UTF8.GetString(responseData);
+                var response = Util.JsonDeserialize<MultiFactorWebResponse<MultiFactorAccessPage>>(responseJson);
                 if (!response.Success)
                 {
+                    _logger.Error($"Got unsuccessful response from API: {responseJson}");
                     throw new Exception(response.Message);
                 }
 
@@ -74,8 +73,9 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (Exception ex)
             {
-                _logger.Error(ex.ToString());
-                throw new Exception("MultiFactor API error: " + ex.Message);
+                var errmsg = $"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {ex.Message}";
+                _logger.Error(errmsg);
+                throw new Exception($"{Constants.API_UNREACHABLE_CODE} {errmsg}", ex);
             }
         }
     }

@@ -11,8 +11,11 @@ namespace MultiFactor.IIS.Adapter
         public string ApiSecret { get; private set; }
         public string ApiUrl { get; private set; }
         public string ApiProxy { get; private set; }
+        public bool BypassSecondFactorWhenApiUnreachable { get; private set; }
+
         public string ActiveDirectory2FaGroup { get; private set; }
-        public int ActiveDirectoryCacheTimout { get; private set; }        
+        public TimeSpan ActiveDirectoryCacheTimout { get; private set; }        
+        public TimeSpan ApiLifeCheckInterval { get; private set; }        
         public bool UseUpnAsIdentity { get; private set; }
         public string[] PhoneAttributes { get; private set; } = new string[0];
 
@@ -25,24 +28,25 @@ namespace MultiFactor.IIS.Adapter
         {
             var appSettings = ConfigurationManager.AppSettings;
 
-            var apiUrlSetting = appSettings["multifactor:api-url"];
-            var apiKeySetting = appSettings["multifactor:api-key"];
-            var apiSecretSetting = appSettings["multifactor:api-secret"];
-            var apiProxySetting = appSettings["multifactor:api-proxy"];
-            var activeDirectory2FaGroupSetting = appSettings["multifactor:active-directory-2fa-group"];
-            var useUpnAsIdentitySetting = appSettings["multifactor:use-upn-as-identity"];
+            var apiUrlSetting = appSettings[ConfigurationKeys.ApiUrl];
+            var apiKeySetting = appSettings[ConfigurationKeys.ApiKey];
+            var apiSecretSetting = appSettings[ConfigurationKeys.ApiSecret];
+            var apiProxySetting = appSettings[ConfigurationKeys.ApiProxy];
+
+            var activeDirectory2FaGroupSetting = appSettings[ConfigurationKeys.ActiveDirectory2FAGroup];
+            var useUpnAsIdentitySetting = appSettings[ConfigurationKeys.UseUpnAsIdentity];
 
             if (string.IsNullOrEmpty(apiUrlSetting))
             {
-                throw new Exception("Configuration error: 'multifactor:api-url' element not found or empty");
+                throw new Exception($"Configuration error: '{ConfigurationKeys.ApiUrl}' element not found or empty");
             }
             if (string.IsNullOrEmpty(apiKeySetting))
             {
-                throw new Exception("Configuration error: 'multifactor:api-key' element not found or empty");
+                throw new Exception($"Configuration error: '{ConfigurationKeys.ApiKey}' element not found or empty");
             }
             if (string.IsNullOrEmpty(apiSecretSetting))
             {
-                throw new Exception("Configuration error: 'multifactor:api-secret' element not found or empty");
+                throw new Exception($"Configuration error: '{ConfigurationKeys.ApiSecret}' element not found or empty");
             }
 
             var config = new Configuration
@@ -61,15 +65,19 @@ namespace MultiFactor.IIS.Adapter
 
             ReadActiveDirectoryCacheTimoutSetting(appSettings, config);
             ReadPhoneAttributeSetting(appSettings, config);
+            ReadBypassWhenApiUnreachableSetting(appSettings, config);
+            ReadApiLifeCheckIntervalSetting(appSettings, config);
 
             return config;
         }
 
         private static void ReadPhoneAttributeSetting(NameValueCollection appSettings, Configuration configuration)
         {
-            const string key = "multifactor:phone-attribute";
-            var value = appSettings[key];
-            if (string.IsNullOrWhiteSpace(value)) return;
+            var value = appSettings[ConfigurationKeys.PhoneAttribute];
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
 
             var parsed = value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(attr => attr.Trim()).ToArray();
             if (parsed.Length != 0) configuration.PhoneAttributes = parsed;     
@@ -77,18 +85,51 @@ namespace MultiFactor.IIS.Adapter
 
         private static void ReadActiveDirectoryCacheTimoutSetting(NameValueCollection appSettings, Configuration configuration)
         {
-            const string legacyKey = "multifactor:active-directory-2fa-group-membership-cache-timeout";
-            const string key = "multifactor:active-directory-cache-timeout";
+            var ttl = TimeSpan.Zero;
 
-            int ttl = -1;
+            var legacyValue = appSettings[ConfigurationKeys.ActiveDirectory2FAGroupMembershipCacheTimeout];
+            if (int.TryParse(legacyValue, out var legVal)) ttl = TimeSpan.FromMinutes(legVal);
+            
+            var value = appSettings[ConfigurationKeys.ActiveDirectoryCacheTimeout];
+            if (int.TryParse(value, out var val)) ttl = TimeSpan.FromMinutes(val);
+            
+            configuration.ActiveDirectoryCacheTimout = ttl > TimeSpan.Zero ? ttl : TimeSpan.FromMinutes(15);
+        }
+        
+        private static void ReadApiLifeCheckIntervalSetting(NameValueCollection appSettings, Configuration configuration)
+        {
+            var defaultValue = TimeSpan.FromMinutes(15);
 
-            var legacyValue = appSettings[legacyKey];
-            if (int.TryParse(legacyValue, out var legVal)) ttl = legVal;
-            
-            var value = appSettings[key];
-            if (int.TryParse(value, out var val)) ttl = val;
-            
-            configuration.ActiveDirectoryCacheTimout = ttl;
+            var value = appSettings[ConfigurationKeys.ApiLifeCheckInterval];
+            if (string.IsNullOrEmpty(value))
+            {
+                configuration.ApiLifeCheckInterval = defaultValue;
+                return;
+            }
+
+            if (!int.TryParse(value, out var parsed))
+            {
+                throw new Exception($"Configuration error: '{ConfigurationKeys.ApiLifeCheckInterval}' element has invalid value");
+            }
+
+            configuration.ApiLifeCheckInterval = parsed > 0 ? TimeSpan.FromMinutes(parsed) : defaultValue;
+        }
+        
+        private static void ReadBypassWhenApiUnreachableSetting(NameValueCollection appSettings, Configuration configuration)
+        {
+            var value = appSettings[ConfigurationKeys.BypassSecondFactorWhenApiUnreachable];
+            if (string.IsNullOrEmpty(value))
+            {
+                configuration.BypassSecondFactorWhenApiUnreachable = true;
+                return;
+            }
+
+            if (!bool.TryParse(value, out var parsed))
+            {
+                throw new Exception($"Configuration error: '{ConfigurationKeys.BypassSecondFactorWhenApiUnreachable}' element has invalid value");
+            }
+
+            configuration.BypassSecondFactorWhenApiUnreachable = parsed;
         }
     }
 }
