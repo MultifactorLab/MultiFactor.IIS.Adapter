@@ -75,6 +75,11 @@ namespace MultiFactor.IIS.Adapter.Services
             {
                 var errmsg = $"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {ex.Message}";
                 _logger.Error(errmsg);
+                if (ex.Message.Contains("UserNotRegistered"))
+                {
+                    throw new Exception($"{Constants.API_NOT_REGISTERED_CODE} {errmsg}", ex);
+                }
+
                 throw new Exception($"{Constants.API_UNREACHABLE_CODE} {errmsg}", ex);
             }
         }
