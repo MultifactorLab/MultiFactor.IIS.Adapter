@@ -17,5 +17,6 @@
         };
 
         public const string API_UNREACHABLE_CODE = "mfapi:0001";
+        public const string API_NOT_REGISTERED_CODE = "mfapi:0002";
     }
 }
