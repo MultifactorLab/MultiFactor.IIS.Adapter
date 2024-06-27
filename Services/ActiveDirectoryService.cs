@@ -11,7 +11,7 @@ namespace MultiFactor.IIS.Adapter.Services
     /// </summary>
     public class ActiveDirectoryService
     {
-        private CacheAdapter _cache;
+        private readonly CacheAdapter _cache;
         private readonly Logger _logger;
 
         public ActiveDirectoryService(CacheAdapter cache, Logger logger)
