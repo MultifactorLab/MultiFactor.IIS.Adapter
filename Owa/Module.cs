@@ -125,7 +125,7 @@ namespace MultiFactor.IIS.Adapter.Owa
 
         private void ProcessMultifactorRequest(HttpContextBase context)
         {
-            Logger.Owa.($"Process MFA request");
+            Logger.Owa.Info($"Process MFA request");
             //check if user session timed-out
             if (!context.User.Identity.IsAuthenticated)
             {
