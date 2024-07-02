@@ -53,7 +53,6 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            Logger.Owa.Info($"OnPostAuthorizeRequest for path = {path}");
             //auth page
             if (path.Contains("/auth"))
             {
@@ -126,7 +125,7 @@ namespace MultiFactor.IIS.Adapter.Owa
 
         private void ProcessMultifactorRequest(HttpContextBase context)
         {
-            Logger.Owa.Info($"Process MFA request");
+            Logger.Owa.($"Process MFA request");
             //check if user session timed-out
             if (!context.User.Identity.IsAuthenticated)
             {
