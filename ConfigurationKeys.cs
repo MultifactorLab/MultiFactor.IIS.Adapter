@@ -17,6 +17,7 @@
         public static readonly string ApiLifeCheckInterval = $"{_prefix}:api-life-check-interval";
 
         public static readonly string UseUpnAsIdentity = $"{_prefix}:use-upn-as-identity";
+        public static readonly string TwoFAIdentityAttribyte = $"{_prefix}:use-attribute-as-identity";
         public static readonly string PhoneAttribute = $"{_prefix}:phone-attribute";
     }
 }

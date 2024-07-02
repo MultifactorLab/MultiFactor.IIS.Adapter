@@ -3,7 +3,7 @@
     public interface ILdapProfile
     {
         string SamAccountName { get; }
-        string UserPrincipalName { get; }
+        string TwoFAIdentity { get; }
         string Phone { get; }
         string this[string key] { get; }
     }

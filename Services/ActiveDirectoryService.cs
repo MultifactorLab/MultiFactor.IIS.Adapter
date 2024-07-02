@@ -11,13 +11,15 @@ namespace MultiFactor.IIS.Adapter.Services
     /// </summary>
     public class ActiveDirectoryService
     {
-        private CacheAdapter _cache;
+        private readonly CacheAdapter _cache;
+        private readonly Configuration _config;
         private readonly Logger _logger;
 
         public ActiveDirectoryService(CacheAdapter cache, Logger logger)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _config = Configuration.Current;
         }
 
         public ILdapProfile GetProfile(string samAccountName)
@@ -27,16 +29,16 @@ namespace MultiFactor.IIS.Adapter.Services
             var profile = _cache.GetProfile(samAccountName);
             if (profile != null) return profile;
 
-            foreach (var domain in Configuration.Current.SplittedActiveDirectoryDomains)
+            foreach (var domain in _config.SplittedActiveDirectoryDomains)
             {
                 try
                 {
                     _logger.Info($"Try load profile from {domain}");
                     using (var adapter = LdapConnectionAdapter.Create(domain, _logger))
                     {
-                        var loader = new ProfileLoader(adapter, _logger);
+                        var loader = new ProfileLoader(adapter, _config, _logger);
                         profile = loader.Load(samAccountName);
-                        _logger.Info($"LoadProfile:{profile?.SamAccountName} {profile?.Phone} {profile?.UserPrincipalName}");
+                        _logger.Info($"LoadProfile:{profile?.SamAccountName} {profile?.Phone} {profile?.TwoFAIdentity}");
                         if (profile == null)
                         {
                             continue;
@@ -78,11 +80,11 @@ namespace MultiFactor.IIS.Adapter.Services
 
         private bool ValidateMembershipInternal(string samAccountName)
         {
-            var groupName = Configuration.Current.ActiveDirectory2FaGroup;
+            var groupName = _config.ActiveDirectory2FaGroup;
 
             try
             {
-                foreach (var domain in Configuration.Current.SplittedActiveDirectoryDomains)
+                foreach (var domain in _config.SplittedActiveDirectoryDomains)
                 {
                     using (var adapter = LdapConnectionAdapter.Create(domain, _logger))
                     {
@@ -129,33 +131,6 @@ namespace MultiFactor.IIS.Adapter.Services
 
             return true; //let unknown result will be true
         }
-
-        //public string SearchUserPrincipalName(string samAccountName)
-        //{
-        //    const string attr = "UserPrincipalName";
-
-        //    try
-        //    {
-        //        using (var adapter = LdapConnectionAdapter.Create(_logger))
-        //        {
-        //            var searchFilter = $"(&(sAMAccountName={samAccountName})(objectClass=user))";
-        //            var response = adapter.Search(adapter.Domain.GetDn(), searchFilter, SearchScope.Subtree, attr);
-        //            if (response.Entries.Count == 0) return samAccountName;
-
-        //            return response.Entries[0].Attributes[attr]?[0]?.ToString();
-        //        }
-        //    }
-        //    catch (LdapException ex)
-        //    {
-        //        _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
-        //    }
-        //    catch (Exception ex)
-        //    {
-        //        _logger.Error(ex.ToString());
-        //    }
-
-        //    return null;
-        //}
 
         /// <summary>
         /// Search group distinguished name

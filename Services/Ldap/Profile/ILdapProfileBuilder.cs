@@ -3,7 +3,7 @@
     public interface ILdapProfileBuilder
     {
         ILdapProfileBuilder SetPhone(string value, string attrName);
-        ILdapProfileBuilder SetUpn(string value);
+        ILdapProfileBuilder Set2FAIdentityAttribute(string value);
         ILdapProfile Build();
     }
 }

@@ -8,21 +8,26 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
     public class ProfileLoader
     {
         private readonly LdapConnectionAdapter _adapter;
+        private readonly Configuration _config;
         private readonly Logger _logger;
 
-        public ProfileLoader(LdapConnectionAdapter adapter, Logger logger)
+        public ProfileLoader(LdapConnectionAdapter adapter, Configuration config, Logger logger)
         {
             _adapter = adapter ?? throw new ArgumentNullException(nameof(adapter));
+            _config = config;
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
         public ILdapProfile Load(string samAccountName)
         {
-            var profile = LdapProfile.Create(samAccountName);
+            var profile = LdapProfile.Create(samAccountName, _config.TwoFAIdentityAttribyte);
 
             var attrs = new List<string>();
-            attrs.AddRange(Configuration.Current.PhoneAttributes);
-            attrs.Add("UserPrincipalName");
+            attrs.AddRange(_config.PhoneAttributes);
+            if (_config.UseIdentityAttribute)
+            {
+                attrs.Add(_config.TwoFAIdentityAttribyte);
+            }
 
             try
             {
@@ -33,7 +38,7 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
                 if (response.Entries.Count == 0) return profile.Build();
 
                 SetPhone(profile, response);
-                SetUpn(profile, response);
+                Set2FAIdentityAttribute(profile, response);
             }
             catch (LdapException ex)
             {
@@ -47,18 +52,18 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
             return profile.Build();
         }
 
-        private static void SetUpn(ILdapProfileBuilder profile, SearchResponse response)
+        private void Set2FAIdentityAttribute(ILdapProfileBuilder profile, SearchResponse response)
         {
-            var upn = response.Entries[0].Attributes["UserPrincipalName"]?[0]?.ToString();
-            if (upn != null)
+            var identity = response.Entries[0].Attributes[_config.TwoFAIdentityAttribyte]?[0]?.ToString();
+            if (identity != null)
             {
-                profile.SetUpn(upn);
+                profile.Set2FAIdentityAttribute(identity);
             }
         }
 
-        private static void SetPhone(ILdapProfileBuilder profile, SearchResponse response)
+        private void SetPhone(ILdapProfileBuilder profile, SearchResponse response)
         {
-            foreach (var attr in Configuration.Current.PhoneAttributes)
+            foreach (var attr in _config.PhoneAttributes)
             {
                 var value = response.Entries[0].Attributes[attr]?[0]?.ToString();
                 if (value == null) continue;

@@ -38,7 +38,7 @@ namespace MultiFactor.IIS.Adapter.Owa
         public override void OnPostAuthorizeRequest(HttpContextBase context)
         {
             var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
-            Logger.Owa.Info($"OnPostAuthorizeRequest path = {path}");
+
             //static resources
             if (WebUtil.IsStaticResourceRequest(context.Request.Url))
             {

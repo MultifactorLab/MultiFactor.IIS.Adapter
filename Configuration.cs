@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MultiFactor.IIS.Adapter.Services;
+using System;
 using System.Collections.Specialized;
 using System.Configuration;
 using System.Linq;
@@ -17,6 +18,10 @@ namespace MultiFactor.IIS.Adapter
         public TimeSpan ActiveDirectoryCacheTimout { get; private set; }
         public TimeSpan ApiLifeCheckInterval { get; private set; }
         public bool UseUpnAsIdentity { get; private set; }
+
+        //Lookup for some attribute and use it for 2fa instead of uid
+        public bool UseIdentityAttribute => !string.IsNullOrEmpty(TwoFAIdentityAttribyte);
+        public string TwoFAIdentityAttribyte { get; private set; }
         public string[] PhoneAttributes { get; private set; } = new string[0];
 
         /// <summary>
@@ -46,6 +51,7 @@ namespace MultiFactor.IIS.Adapter
             var activeDirectory2FaGroupSetting = appSettings[ConfigurationKeys.ActiveDirectory2FAGroup];
             var activeDirectoryDomain = appSettings[ConfigurationKeys.ActiveDirectoryDomain];
             var useUpnAsIdentitySetting = appSettings[ConfigurationKeys.UseUpnAsIdentity];
+            var twoFAIdentityAttribyteSetting = appSettings[ConfigurationKeys.TwoFAIdentityAttribyte];
 
             var domain = System.DirectoryServices.ActiveDirectory.Domain.GetComputerDomain().Name;
             if (!string.IsNullOrWhiteSpace(activeDirectoryDomain))
@@ -76,9 +82,20 @@ namespace MultiFactor.IIS.Adapter
                 ActiveDirectory2FaGroup = activeDirectory2FaGroupSetting
             };
 
+            // MUST be before 'use-upn-as-identity' check
+            if (!string.IsNullOrEmpty(twoFAIdentityAttribyteSetting))
+            {
+                config.TwoFAIdentityAttribyte = twoFAIdentityAttribyteSetting;
+            }
+
+            //legacy settings for 2fa identity
             if (bool.TryParse(useUpnAsIdentitySetting, out var useUpnAsIdentity))
             {
-                config.UseUpnAsIdentity = useUpnAsIdentity;
+                if (!string.IsNullOrEmpty(twoFAIdentityAttribyteSetting))
+                    throw new Exception("Configuration error: Using settings 'use-upn-as-identity' and 'use-attribute-as-identity' together is unacceptable. Prefer using 'use-attribute-as-identity'.");
+
+                Logger.Owa.Warn("The setting 'use-upn-as-identity' is deprecated, use 'use-attribute-as-identity' instead");
+                config.TwoFAIdentityAttribyte = "userPrincipalName";
             }
 
             ReadActiveDirectoryCacheTimoutSetting(appSettings, config);
