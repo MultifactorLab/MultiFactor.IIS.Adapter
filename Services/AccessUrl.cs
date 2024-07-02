@@ -17,6 +17,11 @@ namespace MultiFactor.IIS.Adapter.Services
         {
             var identity = rawUsername;
             var profile = _activeDirectory.GetProfile(Util.CanonicalizeUserName(identity));
+            if (profile == null)
+            {
+                // redirect to (custom?) error page
+                throw new Exception($"Profile {rawUsername} not found");
+            }
             if (Configuration.Current.UseUpnAsIdentity)
             {
                 if (!identity.Contains("@"))
@@ -25,7 +30,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 }
             }
 
-            var multiFactorAccessUrl = _api.CreateRequest(identity, rawUsername, postbackUrl, profile);
+            var multiFactorAccessUrl = _api.CreateRequest(identity, rawUsername, postbackUrl, profile?.Phone);
             return multiFactorAccessUrl;
         }    
     }

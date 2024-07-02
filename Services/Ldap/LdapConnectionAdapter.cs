@@ -17,25 +17,30 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap
             _logger = logger;
         }
 
-        public static LdapConnectionAdapter Create(Logger logger)
+        public static LdapConnectionAdapter Create(string domain, Logger logger)
         {
+            if (string.IsNullOrWhiteSpace(domain))
+            {
+                throw new ArgumentNullException(nameof(domain));
+            }
+
             if (logger == null)
             {
                 throw new ArgumentNullException(nameof(logger));
             }
 
             var adDomain = System.DirectoryServices.ActiveDirectory.Domain.GetComputerDomain().Name;
-            logger.Info($"Creating ldap connection to server {adDomain}");
-            var conn = new LdapConnection(adDomain);
+            logger.Info($"Creating ldap connection to server {domain}");
+            var conn = new LdapConnection(domain);
 
             conn.SessionOptions.RootDseCache = true;
             conn.SessionOptions.ProtocolVersion = 3;
             conn.SessionOptions.ReferralChasing = ReferralChasingOptions.None;
 
-            logger.Info($"Binding current user to connection for server {adDomain}");
+            logger.Info($"Binding current user to connection for server {domain}");
             conn.Bind(); //as current user
 
-            return new LdapConnectionAdapter(conn, new FullyQualifiedDomainName(adDomain), logger);
+            return new LdapConnectionAdapter(conn, new FullyQualifiedDomainName(domain), logger);
         }
 
         public SearchResponse Search(string baseDn, string filter, SearchScope scope, params string[] attributes)

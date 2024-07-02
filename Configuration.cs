@@ -14,10 +14,20 @@ namespace MultiFactor.IIS.Adapter
         public bool BypassSecondFactorWhenApiUnreachable { get; private set; }
 
         public string ActiveDirectory2FaGroup { get; private set; }
-        public TimeSpan ActiveDirectoryCacheTimout { get; private set; }        
-        public TimeSpan ApiLifeCheckInterval { get; private set; }        
+        public TimeSpan ActiveDirectoryCacheTimout { get; private set; }
+        public TimeSpan ApiLifeCheckInterval { get; private set; }
         public bool UseUpnAsIdentity { get; private set; }
         public string[] PhoneAttributes { get; private set; } = new string[0];
+
+        /// <summary>
+        /// Active Directory Domain
+        /// </summary>
+        public string ActiveDirectoryDomain { get; set; }
+
+        public string[] SplittedActiveDirectoryDomains =>
+            (ActiveDirectoryDomain ?? string.Empty).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
+            .Distinct()
+            .ToArray();
 
         private static readonly Lazy<Configuration> _current = new Lazy<Configuration>(Load);
         public static Configuration Current => _current.Value;
@@ -34,7 +44,14 @@ namespace MultiFactor.IIS.Adapter
             var apiProxySetting = appSettings[ConfigurationKeys.ApiProxy];
 
             var activeDirectory2FaGroupSetting = appSettings[ConfigurationKeys.ActiveDirectory2FAGroup];
+            var activeDirectoryDomain = appSettings[ConfigurationKeys.ActiveDirectoryDomain];
             var useUpnAsIdentitySetting = appSettings[ConfigurationKeys.UseUpnAsIdentity];
+
+            var domain = System.DirectoryServices.ActiveDirectory.Domain.GetComputerDomain().Name;
+            if (!string.IsNullOrWhiteSpace(activeDirectoryDomain))
+            {
+                domain = activeDirectoryDomain;
+            }
 
             if (string.IsNullOrEmpty(apiUrlSetting))
             {
@@ -55,6 +72,7 @@ namespace MultiFactor.IIS.Adapter
                 ApiKey = apiKeySetting,
                 ApiSecret = apiSecretSetting,
                 ApiProxy = apiProxySetting,
+                ActiveDirectoryDomain = domain,
                 ActiveDirectory2FaGroup = activeDirectory2FaGroupSetting
             };
 
@@ -80,7 +98,7 @@ namespace MultiFactor.IIS.Adapter
             }
 
             var parsed = value.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries).Select(attr => attr.Trim()).ToArray();
-            if (parsed.Length != 0) configuration.PhoneAttributes = parsed;     
+            if (parsed.Length != 0) configuration.PhoneAttributes = parsed;
         }
 
         private static void ReadActiveDirectoryCacheTimoutSetting(NameValueCollection appSettings, Configuration configuration)
@@ -89,13 +107,13 @@ namespace MultiFactor.IIS.Adapter
 
             var legacyValue = appSettings[ConfigurationKeys.ActiveDirectory2FAGroupMembershipCacheTimeout];
             if (int.TryParse(legacyValue, out var legVal)) ttl = TimeSpan.FromMinutes(legVal);
-            
+
             var value = appSettings[ConfigurationKeys.ActiveDirectoryCacheTimeout];
             if (int.TryParse(value, out var val)) ttl = TimeSpan.FromMinutes(val);
-            
+
             configuration.ActiveDirectoryCacheTimout = ttl > TimeSpan.Zero ? ttl : TimeSpan.FromMinutes(15);
         }
-        
+
         private static void ReadApiLifeCheckIntervalSetting(NameValueCollection appSettings, Configuration configuration)
         {
             var defaultValue = TimeSpan.FromMinutes(15);
@@ -114,7 +132,7 @@ namespace MultiFactor.IIS.Adapter
 
             configuration.ApiLifeCheckInterval = parsed > 0 ? TimeSpan.FromMinutes(parsed) : defaultValue;
         }
-        
+
         private static void ReadBypassWhenApiUnreachableSetting(NameValueCollection appSettings, Configuration configuration)
         {
             var value = appSettings[ConfigurationKeys.BypassSecondFactorWhenApiUnreachable];

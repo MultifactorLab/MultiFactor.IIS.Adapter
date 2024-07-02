@@ -18,7 +18,7 @@ namespace MultiFactor.IIS.Adapter.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public string CreateRequest(string identity, string rawUserName, string postbackUrl, ILdapProfile profile)
+        public string CreateRequest(string identity, string rawUserName, string postbackUrl, string userPhone)
         {
             try
             {
@@ -29,7 +29,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 var payload = Util.JsonSerialize(new
                 {
                     Identity = identity,
-                    profile.Phone,
+                    userPhone,
                     Callback = new
                     {
                         Action = postbackUrl,
@@ -47,6 +47,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 //basic authorization
                 var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
 
+                _logger.Info($"Create mfa request to api for {identity}");
 
                 using (var web = new WebClient())
                 {
