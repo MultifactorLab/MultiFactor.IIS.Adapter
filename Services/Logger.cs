@@ -8,7 +8,7 @@ namespace MultiFactor.IIS.Adapter.Services
     /// </summary>
     public class Logger
     {
-        private string _source;
+        private readonly string _source;
 
         public Logger(string source)
         {

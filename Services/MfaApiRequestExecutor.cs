@@ -19,7 +19,6 @@ namespace MultiFactor.IIS.Adapter.Services
 
         public void Execute(string postbackUrl, string appRootPath)
         {
-
             try
             {
                 var multiFactorAccessUrl = _accessUrl.Get(_context.User.Identity.Name, postbackUrl);
@@ -27,15 +26,17 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (Exception ex) when (NeedToBypass(ex))
             {
-                // set bypass flag
+                _logger.Error($"Debug top exception: {ex.Message}");
+
                 _logger.Warn($"Bypassing the second factor for user '{_context.User.Identity.Name}' due to an API error '{ex.Message}'. Bypass session duration: {Configuration.Current.ApiLifeCheckInterval.TotalMinutes} min");
                 _context.GetCacheAdapter().SetApiUnreachable(Util.CanonicalizeUserName(_context.User.Identity.Name), true);
                 _context.Response.Redirect(appRootPath, true);
             }
         }
 
-        private static bool NeedToBypass(Exception ex)
+        private bool NeedToBypass(Exception ex)
         {
+            _logger.Error($"Debug exception: {ex.Message}");
             return ex.Message?.StartsWith(Constants.API_UNREACHABLE_CODE) == true && Configuration.Current.BypassSecondFactorWhenApiUnreachable;
         }
     }
