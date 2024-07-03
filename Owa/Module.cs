@@ -2,6 +2,7 @@
 using MultiFactor.IIS.Adapter.Extensions;
 using MultiFactor.IIS.Adapter.Services;
 using System;
+using System.IO;
 using System.Linq;
 using System.Security.Principal;
 using System.Web;

@@ -69,19 +69,31 @@ namespace MultiFactor.IIS.Adapter.Services
                     _logger.Error($"Got unsuccessful response from API: {responseJson}");
                     throw new Exception(response.Message);
                 }
-
+                _logger.Info($"Succesfully get url {response.Model.Url} for {identity}");
                 return response.Model.Url;
+            }
+            catch (WebException wex) // webclient way to catch unsuccess http status code
+            {
+                var errmsg = $"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {wex.Message}";
+                _logger.Error(errmsg);
+                _logger.Error(wex.Message);
+                throw new Exception($"{Constants.API_UNREACHABLE_CODE} {errmsg}", wex);
             }
             catch (Exception ex)
             {
-                var errmsg = $"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {ex.Message}";
-                _logger.Error(errmsg);
+                //var errmsg = $"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {ex.Message}";
+                string errmsg = "Something went wrong";
+                _logger.Error(ex.Message);
                 if (ex.Message.Contains("UserNotRegistered"))
                 {
-                    throw new Exception($"{Constants.API_NOT_REGISTERED_CODE} {errmsg}", ex);
+                    throw new Exception($"{Constants.API_NOT_REGISTERED_CODE} {ex.Message}", ex);
+                }
+                if (ex.Message.Contains("Users quota exceeded"))
+                {
+                    throw new Exception($"{Constants.API_USERS_QUOTA_EXCEEDED_CODE} {ex.Message}", ex);
                 }
 
-                throw new Exception($"{Constants.API_UNREACHABLE_CODE} {errmsg}", ex);
+                throw new Exception($"{errmsg}", ex);
             }
         }
     }
