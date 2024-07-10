@@ -53,6 +53,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 {
                     web.Headers.Add("Content-Type", "application/json");
                     web.Headers.Add("Authorization", $"Basic {auth}");
+                    web.Headers.Add("mf-trace-id", $"iis-{Guid.NewGuid()}");
 
                     if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
                     {

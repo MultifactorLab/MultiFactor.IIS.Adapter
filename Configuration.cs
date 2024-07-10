@@ -99,7 +99,10 @@ namespace MultiFactor.IIS.Adapter
                     throw new Exception("Configuration error: Using settings 'use-upn-as-identity' and 'use-attribute-as-identity' together is unacceptable. Prefer using 'use-attribute-as-identity'.");
 
                 Logger.Owa.Warn("The setting 'use-upn-as-identity' is deprecated, use 'use-attribute-as-identity' instead");
-                config.TwoFAIdentityAttribyte = "userPrincipalName";
+                if (useUpnAsIdentity)
+                {
+                    config.TwoFAIdentityAttribyte = "userPrincipalName";
+                }
             }
 
             ReadActiveDirectoryCacheTimoutSetting(appSettings, config);
