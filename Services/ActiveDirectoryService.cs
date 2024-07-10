@@ -112,10 +112,6 @@ namespace MultiFactor.IIS.Adapter.Services
                         {
                             return true;
                         }
-                        else
-                        {
-                            continue;
-                        }
                     }
                 }
                 return false;

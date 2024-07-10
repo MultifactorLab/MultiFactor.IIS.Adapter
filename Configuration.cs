@@ -27,7 +27,7 @@ namespace MultiFactor.IIS.Adapter
         /// <summary>
         /// Active Directory Domain
         /// </summary>
-        public string ActiveDirectoryDomain { get; set; }
+        private string ActiveDirectoryDomain { get; set; }
 
         public string[] SplittedActiveDirectoryDomains =>
             (ActiveDirectoryDomain ?? string.Empty).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
@@ -53,10 +53,14 @@ namespace MultiFactor.IIS.Adapter
             var useUpnAsIdentitySetting = appSettings[ConfigurationKeys.UseUpnAsIdentity];
             var twoFAIdentityAttribyteSetting = appSettings[ConfigurationKeys.TwoFAIdentityAttribyte];
 
-            var domain = System.DirectoryServices.ActiveDirectory.Domain.GetComputerDomain().Name;
+            string domain;
             if (!string.IsNullOrWhiteSpace(activeDirectoryDomain))
             {
                 domain = activeDirectoryDomain;
+            }
+            else
+            {
+                domain = System.DirectoryServices.ActiveDirectory.Domain.GetComputerDomain().Name;
             }
 
             if (string.IsNullOrEmpty(apiUrlSetting))

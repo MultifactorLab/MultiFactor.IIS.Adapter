@@ -29,7 +29,6 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap
                 throw new ArgumentNullException(nameof(logger));
             }
 
-            var adDomain = System.DirectoryServices.ActiveDirectory.Domain.GetComputerDomain().Name;
             logger.Info($"Creating ldap connection to server {domain}");
             var conn = new LdapConnection(domain);
 
