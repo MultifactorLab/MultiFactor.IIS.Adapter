@@ -70,7 +70,7 @@ namespace MultiFactor.IIS.Adapter.Services
                     _logger.Error($"Got unsuccessful response from API: {responseJson}");
                     throw new Exception(response.Message);
                 }
-                _logger.Info($"Succesfully get url {response.Model.Url} for {identity}");
+                _logger.Info($"Successfully get url {response.Model.Url} for {identity}");
                 return response.Model.Url;
             }
             catch (WebException wex) // webclient way to catch unsuccess http status code
@@ -82,7 +82,6 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (Exception ex)
             {
-                //var errmsg = $"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {ex.Message}";
                 string errmsg = "Something went wrong";
                 _logger.Error(ex.Message);
                 if (ex.Message.Contains("UserNotRegistered"))

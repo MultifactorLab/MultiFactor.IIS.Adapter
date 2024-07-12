@@ -45,4 +45,9 @@ namespace MultiFactor.IIS.Adapter.Services
             }
         }
     }
+
+    public static class ApplicationEvent
+    {
+        
+    }
 }

@@ -21,21 +21,36 @@ namespace MultiFactor.IIS.Adapter.Services
             _context = context ?? throw new ArgumentNullException(nameof(context));
         }
 
-        public string GetGroupDn(string name)
+        public string GetGroupDn(string groupName)
         {
-            var key = $"{KEY_PREFIX}:{DN_KEY}:{name}";
+            if (string.IsNullOrWhiteSpace(groupName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(groupName));
+            }
+
+            var key = $"{KEY_PREFIX}:{DN_KEY}:{groupName}";
             return GetItem(key);
         }
 
-        public void SetGroupDn(string name, string dn)
+        public void SetGroupDn(string groupName, string dn)
         {
-            var key = $"{KEY_PREFIX}:{DN_KEY}:{name}";
+            if (string.IsNullOrWhiteSpace(groupName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(groupName));
+            }
+
+            var key = $"{KEY_PREFIX}:{DN_KEY}:{groupName}";
             SetItem(key, dn, GROUP_DN_CACHE_TIMEOUT);
         }
 
-        public bool? GetMembership(string user)
+        public bool? GetMembership(string samAccountName)
         {
-            var key = $"{KEY_PREFIX}:{IS_2FA_KEY}:{user}";
+            if (string.IsNullOrWhiteSpace(samAccountName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
+            }
+
+            var key = $"{KEY_PREFIX}:{IS_2FA_KEY}:{samAccountName}";
             var val = GetItem(key);
 
             switch (val)
@@ -49,35 +64,65 @@ namespace MultiFactor.IIS.Adapter.Services
             }
         }
 
-        public void SetMembership(string user, bool isMember)
+        public void SetMembership(string samAccountName, bool isMember)
         {
-            var key = $"{KEY_PREFIX}:{IS_2FA_KEY}:{user}";
+            if (string.IsNullOrWhiteSpace(samAccountName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
+            }
+
+            var key = $"{KEY_PREFIX}:{IS_2FA_KEY}:{samAccountName}";
             var val = isMember ? "1" : "0";
 
             SetItem(key, val, Configuration.Current.ActiveDirectoryCacheTimout);
         }
 
-        public ILdapProfile GetProfile(string user)
+        public ILdapProfile GetProfile(string samAccountName)
         {
-            var key = $"{KEY_PREFIX}:{PROFILE_KEY}:{user}";
+            if (string.IsNullOrWhiteSpace(samAccountName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
+            }
+
+            var key = $"{KEY_PREFIX}:{PROFILE_KEY}:{samAccountName}";
             return GetItem<ILdapProfile>(key);
         }
         
-        public void SetProfile(string user, ILdapProfile profile)
+        public void SetProfile(string samAccountName, ILdapProfile profile)
         {
-            var key = $"{KEY_PREFIX}:{PROFILE_KEY}:{user}";
+            if (string.IsNullOrWhiteSpace(samAccountName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
+            }
+            
+            if (profile == null)
+            {
+                throw new ArgumentNullException(nameof(profile));
+            }
+
+            var key = $"{KEY_PREFIX}:{PROFILE_KEY}:{samAccountName}";
             SetItem(key, profile, Configuration.Current.ActiveDirectoryCacheTimout);
         }
 
-        public bool GetApiUnreachable(string user)
+        public bool GetApiUnreachable(string samAccountName)
         {
-            var key = $"{KEY_PREFIX}:{API_UNREACHABLE}:{user}";
+            if (string.IsNullOrWhiteSpace(samAccountName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
+            }
+
+            var key = $"{KEY_PREFIX}:{API_UNREACHABLE}:{samAccountName}";
             return GetItem<bool>(key);
         }
 
-        public void SetApiUnreachable(string user, bool bypass)
+        public void SetApiUnreachable(string samAccountName, bool bypass)
         {
-            var key = $"{KEY_PREFIX}:{API_UNREACHABLE}:{user}";
+            if (string.IsNullOrWhiteSpace(samAccountName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
+            }
+
+            var key = $"{KEY_PREFIX}:{API_UNREACHABLE}:{samAccountName}";
             SetItem(key, bypass, Configuration.Current.ApiLifeCheckInterval);
         }
 

@@ -24,25 +24,33 @@ namespace MultiFactor.IIS.Adapter.Services
 
         public ILdapProfile GetProfile(string samAccountName)
         {
-            if (samAccountName is null) throw new ArgumentNullException(nameof(samAccountName));
+            if (samAccountName is null)
+            {
+                throw new ArgumentNullException(nameof(samAccountName));
+            }
 
             var profile = _cache.GetProfile(samAccountName);
-            if (profile != null) return profile;
+            if (profile != null)
+            {
+                return profile;
+            }
 
-            foreach (var domain in _config.SplittedActiveDirectoryDomains)
+            foreach (var domain in _config.ActiveDirectoryDomains)
             {
                 try
                 {
                     _logger.Info($"Try load profile from {domain}");
                     using (var adapter = LdapConnectionAdapter.Create(domain, _logger))
                     {
-                        var loader = new ProfileLoader(adapter, _config, _logger);
+                        var loader = new ProfileLoader(adapter, _config);
                         profile = loader.Load(samAccountName);
-                        _logger.Info($"LoadProfile:{profile?.SamAccountName} {profile?.Phone} {profile?.TwoFAIdentity}");
                         if (profile == null)
                         {
                             continue;
-                        }
+                        } 
+                        
+                        _logger.Info($"Profile loaded for user '{profile.SamAccountName}'");
+                        
                         _cache.SetProfile(samAccountName, profile);
                         return profile;
                     }
@@ -84,7 +92,7 @@ namespace MultiFactor.IIS.Adapter.Services
 
             try
             {
-                foreach (var domain in _config.SplittedActiveDirectoryDomains)
+                foreach (var domain in _config.ActiveDirectoryDomains)
                 {
                     using (var adapter = LdapConnectionAdapter.Create(domain, _logger))
                     {

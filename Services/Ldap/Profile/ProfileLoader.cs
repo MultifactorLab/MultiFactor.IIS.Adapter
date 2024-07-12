@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
+using System.Linq;
 
 namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
 {
@@ -9,68 +10,50 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
     {
         private readonly LdapConnectionAdapter _adapter;
         private readonly Configuration _config;
-        private readonly Logger _logger;
 
-        public ProfileLoader(LdapConnectionAdapter adapter, Configuration config, Logger logger)
+        public ProfileLoader(LdapConnectionAdapter adapter, Configuration config)
         {
             _adapter = adapter ?? throw new ArgumentNullException(nameof(adapter));
-            _config = config;
-            _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _config = config ?? throw new ArgumentNullException(nameof(config));
         }
 
         public ILdapProfile Load(string samAccountName)
         {
-            var profile = LdapProfile.Create(samAccountName, _config.TwoFAIdentityAttribyte);
+            if (string.IsNullOrWhiteSpace(samAccountName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
+            }
 
-            var attrs = new List<string>();
-            attrs.AddRange(_config.PhoneAttributes);
+            var profile = new LdapProfile(samAccountName, _config);
+
+            var queryAttributes = new List<string>();
+            queryAttributes.AddRange(_config.PhoneAttributes);
+            queryAttributes.Add("sAMAccountName");
             if (_config.UseIdentityAttribute)
             {
-                attrs.Add(_config.TwoFAIdentityAttribyte);
+                queryAttributes.Add(_config.TwoFaIdentityAttribute);
             }
+            
+            var baseDn = _adapter.Domain.GetDn();
+            var searchFilter = $"(&(sAMAccountName={samAccountName})(objectClass=user))";
 
-            try
+            var response = _adapter.Search(baseDn, searchFilter, SearchScope.Subtree, queryAttributes.ToArray());
+            if (response.Entries.Count == 0)
             {
-                var baseDn = _adapter.Domain.GetDn();
-                var searchFilter = $"(&(sAMAccountName={samAccountName})(objectClass=user))";
-
-                var response = _adapter.Search(baseDn, searchFilter, SearchScope.Subtree, attrs.ToArray());
-                if (response.Entries.Count == 0) return profile.Build();
-
-                SetPhone(profile, response);
-                Set2FAIdentityAttribute(profile, response);
+                return profile;
             }
-            catch (LdapException ex)
+
+            var attributes = response.Entries[0].Attributes;
+            foreach (var attr in queryAttributes)
             {
-                _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
+                var values = attributes[attr]?
+                    .GetValues(typeof(string))
+                    .Cast<string>().ToArray() ?? new string[0];
+                
+                profile.AddAttribute(attr, values);
             }
-            catch (Exception ex)
-            {
-                _logger.Error(ex.ToString());
-            }
-
-            return profile.Build();
-        }
-
-        private void Set2FAIdentityAttribute(ILdapProfileBuilder profile, SearchResponse response)
-        {
-            var identity = response.Entries[0].Attributes[_config.TwoFAIdentityAttribyte]?[0]?.ToString();
-            if (identity != null)
-            {
-                profile.Set2FAIdentityAttribute(identity);
-            }
-        }
-
-        private void SetPhone(ILdapProfileBuilder profile, SearchResponse response)
-        {
-            foreach (var attr in _config.PhoneAttributes)
-            {
-                var value = response.Entries[0].Attributes[attr]?[0]?.ToString();
-                if (value == null) continue;
-
-                profile.SetPhone(value, attr);
-                break;
-            }
+            
+            return profile;
         }
     }
 }
