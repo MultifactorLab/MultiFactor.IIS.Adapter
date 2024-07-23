@@ -17,7 +17,7 @@ namespace MultiFactor.IIS.Adapter.Extensions
             if (domain is null) throw new ArgumentNullException(nameof(domain));
 
             var name = domain.Value;
-            var portIndex = domain.Value.IndexOf(":");
+            var portIndex = domain.Value.IndexOf(":", StringComparison.Ordinal);
             if (portIndex > 0)
             {
                 name = name.Substring(0, portIndex);

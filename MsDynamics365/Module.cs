@@ -109,7 +109,7 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
                 return;
             }
 
-            var executor = MfaApiRequestExecutorFactory.CreateIIS(context);
+            var executor = MfaApiRequestExecutorFactory.CreateCrm(context);
             executor.Execute(url, GetWebAppRoot());
         }
 
@@ -126,7 +126,7 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
                 context.Request.Url.Host :
                 context.Request.Url.Authority;
 
-            host = string.Format("{0}://{1}", context.Request.Url.Scheme, host);
+            host = $"{context.Request.Url.Scheme}://{host}";
 
             if (context.Request.ApplicationPath != "/")
             {

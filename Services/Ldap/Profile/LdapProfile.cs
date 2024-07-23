@@ -1,51 +1,104 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
 {
-    public class LdapProfile : ILdapProfile, ILdapProfileBuilder
+    internal class LdapProfile : ILdapProfile
     {
-        private const string _samAccountNameKey = "samAccountName";
-        private const string _upnKey = "UserPrincipalName";
+        private readonly string _twoFaIdentityAttrName;
+        private readonly string[] _phoneAttrs;
 
-        private readonly Dictionary<string, string> _attrs = new Dictionary<string, string>();
-        private Func<string> _phoneGetter;
+        private readonly Dictionary<string, HashSet<string>> _attrs = new Dictionary<string, HashSet<string>>(new AttributeKeyComparer());
 
-        public string SamAccountName => GetAttr(_samAccountNameKey);
-        public string UserPrincipalName => GetAttr(_upnKey);
-        public string Phone => _phoneGetter();
+        public string SamAccountName => GetAttr("sAMAccountName").First();
+        public string TwoFAIdentity => GetAttr(_twoFaIdentityAttrName).FirstOrDefault();
 
-        public string this[string key] => GetAttr(key);
+        public string Phone
+        {
+            get
+            {
+                foreach (var attr in _phoneAttrs)
+                {
+                    var values = GetAttr(attr);
+                    if (values.Length != 0)
+                    {
+                        return values[0];
+                    }
+                }
+                return null;
+            }
+        }
 
-
-        private LdapProfile(string samAccountName)
+        public LdapProfile(string samAccountName, Configuration configuration)
         {
             if (string.IsNullOrWhiteSpace(samAccountName))
             {
                 throw new ArgumentException($"'{nameof(samAccountName)}' cannot be null or whitespace.", nameof(samAccountName));
             }
+            
+            if (configuration == null)
+            {
+                throw new ArgumentNullException(nameof(configuration));
+            }
 
-            _attrs[_samAccountNameKey] = samAccountName;
-            _phoneGetter = () => GetAttr("telephoneNumber");
+            _attrs["sAMAccountName"] = new HashSet<string>{ samAccountName };
+            _twoFaIdentityAttrName = !configuration.UseIdentityAttribute 
+                ? configuration.TwoFaIdentityAttribute 
+                : "sAMAccountName";
+
+            var phoneAttrs = new List<string>
+            {
+                "telephoneNumber"
+            };
+            
+            if (configuration.PhoneAttributes != null && configuration.PhoneAttributes.Length != 0)
+            {
+                phoneAttrs.AddRange(configuration.PhoneAttributes);
+            }
+            else
+            {
+                phoneAttrs.Add("telephoneNumber");
+            }
+            
+            _phoneAttrs = phoneAttrs.Distinct(new AttributeKeyComparer()).ToArray();
         }
 
-        public static ILdapProfileBuilder Create(string samAccountName) => new LdapProfile(samAccountName);
-
-        public ILdapProfileBuilder SetPhone(string value, string attrName)
+        public void AddAttribute(string attribute, IEnumerable<string> values)
         {
-            _attrs[attrName] = value;
-            _phoneGetter = () => _attrs.ContainsKey(attrName) ? _attrs[attrName] : null;
-            return this;
+            if (attribute is null)
+            {
+                throw new ArgumentNullException(nameof(attribute));
+            }
+
+            if (values is null)
+            {
+                throw new ArgumentNullException(nameof(values));
+            }
+
+            if (_attrs.TryGetValue(attribute, out var hashset))
+            {
+                foreach (var value in values)
+                {
+                    hashset.Add(value);
+                }
+            }
+            else
+            {
+                var h = new HashSet<string>();
+                foreach (var value in values)
+                {
+                    h.Add(value);
+                }
+                _attrs[attribute] = h;
+            }
         }
 
-        public ILdapProfile Build() => this;
-
-        public ILdapProfileBuilder SetUpn(string value)
+        private string[] GetAttr(string key)
         {
-            _attrs[_upnKey] = value;
-            return this;
+            return _attrs.TryGetValue(key, out var values) 
+                ? values.ToArray() 
+                : new string[0];
         }
-
-        private string GetAttr(string key) => _attrs.ContainsKey(key) ? _attrs[key] : null;
     }
 }

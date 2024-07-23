@@ -13,20 +13,23 @@ namespace MultiFactor.IIS.Adapter.Services
             _api = api ?? throw new ArgumentNullException(nameof(api));
         }
 
-        public string Get(string rawUsername, string postbackUrl) 
+        public string Get(string rawUsername, string postbackUrl)
         {
             var identity = rawUsername;
             var profile = _activeDirectory.GetProfile(Util.CanonicalizeUserName(identity));
-            if (Configuration.Current.UseUpnAsIdentity)
+            if (profile == null)
             {
-                if (!identity.Contains("@"))
-                {
-                    identity = profile.UserPrincipalName;
-                }
+                // redirect to (custom?) error page
+                throw new Exception($"Profile {rawUsername} not found");
+            }
+            if (Configuration.Current.UseIdentityAttribute && !string.IsNullOrEmpty(profile.TwoFAIdentity))
+            {
+                Logger.API.Info($"Applying 2fa identity attribute: {identity}->{profile.TwoFAIdentity}");
+                identity = profile.TwoFAIdentity;
             }
 
-            var multiFactorAccessUrl = _api.CreateRequest(identity, rawUsername, postbackUrl, profile);
+            var multiFactorAccessUrl = _api.CreateRequest(identity, rawUsername, postbackUrl, profile?.Phone);
             return multiFactorAccessUrl;
-        }    
+        }
     }
 }

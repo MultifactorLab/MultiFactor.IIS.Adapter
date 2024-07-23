@@ -1,5 +1,4 @@
-﻿using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
@@ -12,13 +11,15 @@ namespace MultiFactor.IIS.Adapter.Services
     public class MultiFactorApiClient
     {
         private readonly Logger _logger;
+        private readonly Func<string> _getTraceId;
 
-        public MultiFactorApiClient(Logger logger)
+        public MultiFactorApiClient(Logger logger, Func<string> getTraceId)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _getTraceId = getTraceId ?? throw new ArgumentNullException(nameof(getTraceId));
         }
 
-        public string CreateRequest(string identity, string rawUserName, string postbackUrl, ILdapProfile profile)
+        public string CreateRequest(string identity, string rawUserName, string postbackUrl, string userPhone)
         {
             try
             {
@@ -29,7 +30,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 var payload = Util.JsonSerialize(new
                 {
                     Identity = identity,
-                    profile.Phone,
+                    userPhone,
                     Callback = new
                     {
                         Action = postbackUrl,
@@ -47,11 +48,13 @@ namespace MultiFactor.IIS.Adapter.Services
                 //basic authorization
                 var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
 
-                _logger.Info($"Create request to api for {identity}");
+                _logger.Info($"Create mfa request to api for {identity}");
+
                 using (var web = new WebClient())
                 {
                     web.Headers.Add("Content-Type", "application/json");
                     web.Headers.Add("Authorization", $"Basic {auth}");
+                    web.Headers.Add("mf-trace-id", _getTraceId());
 
                     if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
                     {
@@ -68,7 +71,7 @@ namespace MultiFactor.IIS.Adapter.Services
                     _logger.Error($"Got unsuccessful response from API: {responseJson}");
                     throw new Exception(response.Message);
                 }
-                _logger.Info($"Succesfully get url {response.Model.Url} for {identity}");
+                _logger.Info($"Successfully get url {response.Model.Url} for {identity}");
                 return response.Model.Url;
             }
             catch (WebException wex) // webclient way to catch unsuccess http status code
@@ -80,7 +83,6 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (Exception ex)
             {
-                //var errmsg = $"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {ex.Message}";
                 string errmsg = "Something went wrong";
                 _logger.Error(ex.Message);
                 if (ex.Message.Contains("UserNotRegistered"))

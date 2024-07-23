@@ -12,42 +12,59 @@ namespace MultiFactor.IIS.Adapter.Services
     public class ActiveDirectoryService
     {
         private readonly CacheAdapter _cache;
+        private readonly Configuration _config;
         private readonly Logger _logger;
 
         public ActiveDirectoryService(CacheAdapter cache, Logger logger)
         {
             _cache = cache ?? throw new ArgumentNullException(nameof(cache));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _config = Configuration.Current;
         }
 
         public ILdapProfile GetProfile(string samAccountName)
         {
-            if (samAccountName is null) throw new ArgumentNullException(nameof(samAccountName));
+            if (samAccountName is null)
+            {
+                throw new ArgumentNullException(nameof(samAccountName));
+            }
 
             var profile = _cache.GetProfile(samAccountName);
-            if (profile != null) return profile;
-
-            try
+            if (profile != null)
             {
-                using (var adapter = LdapConnectionAdapter.Create(_logger))
-                {
-                    var loader = new ProfileLoader(adapter, _logger);
-                    profile = loader.Load(samAccountName);
+                return profile;
+            }
 
-                    _cache.SetProfile(samAccountName, profile);
-                    return profile;
+            foreach (var domain in _config.ActiveDirectoryDomains)
+            {
+                try
+                {
+                    _logger.Info($"Try load profile from {domain}");
+                    using (var adapter = LdapConnectionAdapter.Create(domain, _logger))
+                    {
+                        var loader = new ProfileLoader(adapter, _config);
+                        profile = loader.Load(samAccountName);
+                        if (profile == null)
+                        {
+                            continue;
+                        } 
+                        
+                        _logger.Info($"Profile loaded for user '{profile.SamAccountName}'");
+                        
+                        _cache.SetProfile(samAccountName, profile);
+                        return profile;
+                    }
+                }
+                catch (LdapException ex)
+                {
+                    _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex.ToString());
                 }
             }
-            catch (LdapException ex)
-            {
-                _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
-                throw;
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex.ToString());
-                throw;
-            }
+            return null;
         }
 
         /// <summary>
@@ -61,42 +78,49 @@ namespace MultiFactor.IIS.Adapter.Services
                 return cachedMembership.Value;
             }
 
-            var isMember = ValidateMembershipInternal(samAccountName) ?? true; //let unknown result will be true
+            var isMember = ValidateMembershipInternal(samAccountName);
             _cache.SetMembership(samAccountName, isMember);
 
             return isMember;
         }
 
-        private bool? ValidateMembershipInternal(string samAccountName)
+        private bool ValidateMembershipInternal(string samAccountName)
         {
-            var groupName = Configuration.Current.ActiveDirectory2FaGroup;
+            var groupName = _config.ActiveDirectory2FaGroup;
 
             try
             {
-                using (var adapter = LdapConnectionAdapter.Create(_logger))
+                foreach (var domain in _config.ActiveDirectoryDomains)
                 {
-                    var baseDn = adapter.Domain.GetDn();
-                    var groupDn = _cache.GetGroupDn(groupName);
-                    if (groupDn == null)
+                    using (var adapter = LdapConnectionAdapter.Create(domain, _logger))
                     {
-                        groupDn = GetGroupDn(adapter, groupName, baseDn);
-                        if (groupDn != null)
+                        var baseDn = adapter.Domain.GetDn();
+                        var groupDn = _cache.GetGroupDn(groupName);
+                        if (groupDn == null)
                         {
-                            _cache.SetGroupDn(groupName, groupDn);
+                            groupDn = GetGroupDn(adapter, groupName, baseDn);
+                            if (groupDn != null)
+                            {
+                                _cache.SetGroupDn(groupName, groupDn);
+                            }
+                        }
+
+                        if (groupDn == null)
+                        {
+                            _logger.Warn($"Security group {groupName} not exists");
+                            return true; //group not exists, let unknown result will be true
+                        }
+
+                        var searchFilter = $"(&(sAMAccountName={samAccountName})(memberOf:1.2.840.113556.1.4.1941:={groupDn}))";
+                        var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, "DistinguishedName");
+
+                        if (response.Entries.Count != 0)
+                        {
+                            return true;
                         }
                     }
-
-                    if (groupDn == null)
-                    {
-                        _logger.Warn($"Security group {groupName} not exists");
-                        return null; //group not exists
-                    }
-
-                    var searchFilter = $"(&(sAMAccountName={samAccountName})(memberOf:1.2.840.113556.1.4.1941:={groupDn}))";
-                    var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, "DistinguishedName");
-
-                    return response.Entries.Count != 0;
                 }
+                return false;
             }
             catch (LdapException ex)
             {
@@ -107,34 +131,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 _logger.Error(ex.ToString());
             }
 
-            return null;
-        }
-
-        public string SearchUserPrincipalName(string samAccountName)
-        {
-            const string attr = "UserPrincipalName";
-
-            try
-            {
-                using (var adapter = LdapConnectionAdapter.Create(_logger))
-                {
-                    var searchFilter = $"(&(sAMAccountName={samAccountName})(objectClass=user))";
-                    var response = adapter.Search(adapter.Domain.GetDn(), searchFilter, SearchScope.Subtree, attr);
-                    if (response.Entries.Count == 0) return samAccountName;
-                    
-                    return response.Entries[0].Attributes[attr]?[0]?.ToString();
-                }
-            }
-            catch (LdapException ex)
-            {
-                _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex.ToString());
-            }
-
-            return null;
+            return true; //let unknown result will be true
         }
 
         /// <summary>
@@ -144,9 +141,9 @@ namespace MultiFactor.IIS.Adapter.Services
         {
             var searchFilter = $"(&(objectCategory=group)(name={name}))";
             var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, "DistinguishedName");
-            if (response.Entries.Count == 0) return null;
-
-            return response.Entries[0].DistinguishedName;
+            return response.Entries.Count == 0 
+                ? null 
+                : response.Entries[0].DistinguishedName;
         }
     }
 }

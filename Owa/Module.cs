@@ -2,7 +2,6 @@
 using MultiFactor.IIS.Adapter.Extensions;
 using MultiFactor.IIS.Adapter.Services;
 using System;
-using System.IO;
 using System.Linq;
 using System.Security.Principal;
 using System.Web;
@@ -39,6 +38,7 @@ namespace MultiFactor.IIS.Adapter.Owa
         public override void OnPostAuthorizeRequest(HttpContextBase context)
         {
             var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
+
             //static resources
             if (WebUtil.IsStaticResourceRequest(context.Request.Url))
             {
@@ -125,7 +125,6 @@ namespace MultiFactor.IIS.Adapter.Owa
 
         private void ProcessMultifactorRequest(HttpContextBase context)
         {
-            Logger.Owa.Info($"Process MFA request");
             //check if user session timed-out
             if (!context.User.Identity.IsAuthenticated)
             {

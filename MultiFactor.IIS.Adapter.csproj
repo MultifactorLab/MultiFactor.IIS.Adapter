@@ -72,6 +72,7 @@
     <Compile Include="MsDynamics365\Module.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Core\HttpModuleBase.cs" />
+    <Compile Include="Services\Ldap\Profile\AttributeKeyComparer.cs" />
     <Compile Include="Services\MfaApiRequestExecutor.cs" />
     <Compile Include="Services\MfaApiRequestExecutorFactory.cs" />
     <Compile Include="Owa\UserRequiredSecondFactor.cs" />
@@ -84,9 +85,9 @@
     <Compile Include="Extensions\FullyQualifiedDomainNameExtensions.cs" />
     <Compile Include="Services\Ldap\LdapConnectionAdapter.cs" />
     <Compile Include="Services\Ldap\Profile\ILdapProfile.cs" />
-    <Compile Include="Services\Ldap\Profile\ILdapProfileBuilder.cs" />
     <Compile Include="Services\Ldap\Profile\LdapProfile.cs" />
     <Compile Include="Services\Logger.cs" />
+    <Compile Include="Services\MfTraceIdFactory.cs" />
     <Compile Include="Services\MultiFactorApiClient.cs" />
     <Compile Include="Services\Ldap\Profile\ProfileLoader.cs" />
     <Compile Include="Services\AccessUrl.cs" />
