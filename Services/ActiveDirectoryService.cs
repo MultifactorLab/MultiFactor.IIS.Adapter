@@ -58,12 +58,10 @@ namespace MultiFactor.IIS.Adapter.Services
                 catch (LdapException ex)
                 {
                     _logger.Error($"{ex}\r\nLDAPErrorCode={ex.ErrorCode}, ServerErrorMessage={ex.ServerErrorMessage}");
-                    continue;
                 }
                 catch (Exception ex)
                 {
                     _logger.Error(ex.ToString());
-                    continue;
                 }
             }
             return null;
@@ -143,9 +141,9 @@ namespace MultiFactor.IIS.Adapter.Services
         {
             var searchFilter = $"(&(objectCategory=group)(name={name}))";
             var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, "DistinguishedName");
-            if (response.Entries.Count == 0) return null;
-
-            return response.Entries[0].DistinguishedName;
+            return response.Entries.Count == 0 
+                ? null 
+                : response.Entries[0].DistinguishedName;
         }
     }
 }

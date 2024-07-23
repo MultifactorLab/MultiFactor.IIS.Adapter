@@ -1,5 +1,4 @@
-﻿using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;

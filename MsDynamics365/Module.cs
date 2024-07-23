@@ -126,7 +126,7 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
                 context.Request.Url.Host :
                 context.Request.Url.Authority;
 
-            host = string.Format("{0}://{1}", context.Request.Url.Scheme, host);
+            host = $"{context.Request.Url.Scheme}://{host}";
 
             if (context.Request.ApplicationPath != "/")
             {
