@@ -14,13 +14,13 @@ namespace MultiFactor.IIS.Adapter.Services
             }
 
             var ad = new ActiveDirectoryService(context.GetCacheAdapter(), Logger.Owa);
-            var api = new MultiFactorApiClient(Logger.API);
+            var api = new MultiFactorApiClient(Logger.API, MfTraceIdFactory.CreateTraceOwa);
             var getter = new AccessUrl(ad, api);
 
             return new MfaApiRequestExecutor(context, getter, Logger.Owa);
         }
 
-        public static MfaApiRequestExecutor CreateIIS(HttpContextBase context)
+        public static MfaApiRequestExecutor CreateCrm(HttpContextBase context)
         {
             if (context is null)
             {
@@ -28,7 +28,7 @@ namespace MultiFactor.IIS.Adapter.Services
             }
 
             var ad = new ActiveDirectoryService(context.GetCacheAdapter(), Logger.IIS);
-            var api = new MultiFactorApiClient(Logger.API);
+            var api = new MultiFactorApiClient(Logger.API, MfTraceIdFactory.CreateTraceCrm);
             var getter = new AccessUrl(ad, api);
 
             return new MfaApiRequestExecutor(context, getter, Logger.IIS);

@@ -12,10 +12,12 @@ namespace MultiFactor.IIS.Adapter.Services
     public class MultiFactorApiClient
     {
         private readonly Logger _logger;
+        private readonly Func<string> _getTraceId;
 
-        public MultiFactorApiClient(Logger logger)
+        public MultiFactorApiClient(Logger logger, Func<string> getTraceId)
         {
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _getTraceId = getTraceId ?? throw new ArgumentNullException(nameof(getTraceId));
         }
 
         public string CreateRequest(string identity, string rawUserName, string postbackUrl, string userPhone)
@@ -53,7 +55,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 {
                     web.Headers.Add("Content-Type", "application/json");
                     web.Headers.Add("Authorization", $"Basic {auth}");
-                    web.Headers.Add("mf-trace-id", $"iis-{Guid.NewGuid()}");
+                    web.Headers.Add("mf-trace-id", _getTraceId());
 
                     if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
                     {

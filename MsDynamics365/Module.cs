@@ -109,7 +109,7 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
                 return;
             }
 
-            var executor = MfaApiRequestExecutorFactory.CreateIIS(context);
+            var executor = MfaApiRequestExecutorFactory.CreateCrm(context);
             executor.Execute(url, GetWebAppRoot());
         }
 

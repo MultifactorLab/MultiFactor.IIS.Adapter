@@ -87,6 +87,7 @@
     <Compile Include="Services\Ldap\Profile\ILdapProfile.cs" />
     <Compile Include="Services\Ldap\Profile\LdapProfile.cs" />
     <Compile Include="Services\Logger.cs" />
+    <Compile Include="Services\MfTraceIdFactory.cs" />
     <Compile Include="Services\MultiFactorApiClient.cs" />
     <Compile Include="Services\Ldap\Profile\ProfileLoader.cs" />
     <Compile Include="Services\AccessUrl.cs" />
