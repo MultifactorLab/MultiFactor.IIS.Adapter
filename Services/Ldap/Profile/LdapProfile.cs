@@ -43,7 +43,7 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
             }
 
             _attrs["sAMAccountName"] = new HashSet<string>{ samAccountName };
-            _twoFaIdentityAttrName = !configuration.UseIdentityAttribute 
+            _twoFaIdentityAttrName = configuration.HasTwoFaIdentityAttribute 
                 ? configuration.TwoFaIdentityAttribute 
                 : "sAMAccountName";
 
