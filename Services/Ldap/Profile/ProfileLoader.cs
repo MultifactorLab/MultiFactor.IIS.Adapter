@@ -28,8 +28,7 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
 
             var queryAttributes = new List<string>();
             queryAttributes.AddRange(_config.PhoneAttributes);
-            queryAttributes.Add("sAMAccountName");
-            if (_config.UseIdentityAttribute)
+            if (_config.HasTwoFaIdentityAttribute)
             {
                 queryAttributes.Add(_config.TwoFaIdentityAttribute);
             }

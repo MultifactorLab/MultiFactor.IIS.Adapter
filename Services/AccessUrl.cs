@@ -15,14 +15,17 @@ namespace MultiFactor.IIS.Adapter.Services
 
         public string Get(string rawUsername, string postbackUrl)
         {
-            var identity = rawUsername;
-            var profile = _activeDirectory.GetProfile(Util.CanonicalizeUserName(identity));
+            var identity = Util.CanonicalizeUserName(rawUsername);
+            Logger.API.Info($"Applying identity canonicalization: {rawUsername}->{identity}");
+            
+            var profile = _activeDirectory.GetProfile(identity);
             if (profile == null)
             {
                 // redirect to (custom?) error page
                 throw new Exception($"Profile {rawUsername} not found");
             }
-            if (Configuration.Current.UseIdentityAttribute && !string.IsNullOrEmpty(profile.TwoFAIdentity))
+            
+            if (Configuration.Current.HasTwoFaIdentityAttribute && !string.IsNullOrEmpty(profile.TwoFAIdentity))
             {
                 Logger.API.Info($"Applying 2fa identity attribute: {identity}->{profile.TwoFAIdentity}");
                 identity = profile.TwoFAIdentity;

@@ -26,7 +26,7 @@ namespace MultiFactor.IIS.Adapter
         public TimeSpan ApiLifeCheckInterval { get; private set; }
 
         //Lookup for some attribute and use it for 2fa instead of uid
-        public bool UseIdentityAttribute => !string.IsNullOrWhiteSpace(TwoFaIdentityAttribute);
+        public bool HasTwoFaIdentityAttribute => !string.IsNullOrWhiteSpace(TwoFaIdentityAttribute);
         public string TwoFaIdentityAttribute { get; private set; }
         public string[] PhoneAttributes { get; private set; } = new string[0];
         
@@ -92,26 +92,35 @@ namespace MultiFactor.IIS.Adapter
         {
             var useUpnAsIdentitySetting = appSettings[ConfigurationKeys.UseUpnAsIdentity];
             var twoFaIdentityAttributeSetting = appSettings[ConfigurationKeys.TwoFAIdentityAttribyte];
+
+            var hasUpnAttr = !string.IsNullOrWhiteSpace(useUpnAsIdentitySetting);
+            var hasCustomAttr = !string.IsNullOrWhiteSpace(twoFaIdentityAttributeSetting);
+
+            if (hasUpnAttr && hasCustomAttr)
+            {
+                throw new Exception("Configuration error: Using settings 'use-upn-as-identity' and 'use-attribute-as-identity' together is unacceptable. Prefer using 'use-attribute-as-identity'.");
+            }
             
-            // MUST be before 'use-upn-as-identity' check
-            if (!string.IsNullOrWhiteSpace(twoFaIdentityAttributeSetting))
+            if (hasCustomAttr)
             {
                 configuration.TwoFaIdentityAttribute = twoFaIdentityAttributeSetting;
+                return;
             }
 
-            //legacy settings for 2fa identity
-            if (bool.TryParse(useUpnAsIdentitySetting, out var useUpnAsIdentity))
+            if (!hasUpnAttr)
             {
-                if (!string.IsNullOrWhiteSpace(twoFaIdentityAttributeSetting))
-                {
-                    throw new Exception("Configuration error: Using settings 'use-upn-as-identity' and 'use-attribute-as-identity' together is unacceptable. Prefer using 'use-attribute-as-identity'.");
-                }
+                return;
+            }
 
-                Logger.Owa.Warn("The setting 'use-upn-as-identity' is deprecated, use 'use-attribute-as-identity' instead");
-                if (useUpnAsIdentity)
-                {
-                    configuration.TwoFaIdentityAttribute = "userPrincipalName";
-                }
+            if (!bool.TryParse(useUpnAsIdentitySetting, out var useUpnAsIdentity))
+            {
+                return;
+            }
+
+            Logger.Owa.Warn("The setting 'use-upn-as-identity' is deprecated, use 'use-attribute-as-identity' instead");
+            if (useUpnAsIdentity)
+            {
+                configuration.TwoFaIdentityAttribute = "userPrincipalName";
             }
         }
 
