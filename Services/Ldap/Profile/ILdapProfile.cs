@@ -2,8 +2,9 @@
 {
     public interface ILdapProfile
     {
-        string SamAccountName { get; }
-        string TwoFAIdentity { get; }
+        string RawUserName { get; }
+        string FriendlyUserName { get; }
+        string Custom2FAIdentity { get; }
         string Phone { get; }
     }
 }

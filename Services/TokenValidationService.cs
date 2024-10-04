@@ -71,6 +71,9 @@ namespace MultiFactor.IIS.Adapter.Services
             //as is logged user without transformation
             var rawUserName = json[Constants.RAW_USER_NAME_CLAIM] as string;
 
+
+            // very noisy, only for debug
+            // _logger.Info($"Token verification result: rawName={rawUserName} and sub={sub}");
             return rawUserName ?? sub;
         }
 

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MultiFactor.IIS.Adapter.Services.Ldap;
+using System;
 using System.Web;
 
 namespace MultiFactor.IIS.Adapter.Services
@@ -7,11 +8,13 @@ namespace MultiFactor.IIS.Adapter.Services
     {
         private readonly HttpContextBase _context;
         private readonly TokenValidationService _validationService;
+        private readonly Logger _logger;
 
-        public AuthChecker(HttpContextBase context, TokenValidationService validationService)
+        public AuthChecker(HttpContextBase context, TokenValidationService validationService, Logger logger)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
+            _logger = logger;
         }
 
         public bool IsAuthenticated(string rawUsername)
@@ -28,7 +31,8 @@ namespace MultiFactor.IIS.Adapter.Services
                 return false;
             }
 
-            return Util.CanonicalizeUserName(userName) == Util.CanonicalizeUserName(rawUsername);
+            _logger.Info($"Сomparison netbios name of local user {rawUsername} and mf user {userName}");
+            return rawUsername == userName;
         }
     }
 }
