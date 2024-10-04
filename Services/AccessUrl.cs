@@ -1,4 +1,5 @@
 ﻿using System;
+using MultiFactor.IIS.Adapter.Services.Ldap;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
@@ -13,25 +14,26 @@ namespace MultiFactor.IIS.Adapter.Services
             _api = api ?? throw new ArgumentNullException(nameof(api));
         }
 
-        public string Get(string rawUsername, string postbackUrl)
+        public string Get(LdapIdentity identity, string postbackUrl)
         {
-            var identity = Util.CanonicalizeUserName(rawUsername);
-            Logger.API.Info($"Applying identity canonicalization: {rawUsername}->{identity}");
-            
+
             var profile = _activeDirectory.GetProfile(identity);
             if (profile == null)
             {
                 // redirect to (custom?) error page
-                throw new Exception($"Profile {rawUsername} not found");
-            }
-            
-            if (Configuration.Current.HasTwoFaIdentityAttribute && !string.IsNullOrEmpty(profile.TwoFAIdentity))
-            {
-                Logger.API.Info($"Applying 2fa identity attribute: {identity}->{profile.TwoFAIdentity}");
-                identity = profile.TwoFAIdentity;
+                throw new Exception($"Profile {identity.RawName} not found");
             }
 
-            var multiFactorAccessUrl = _api.CreateRequest(identity, rawUsername, postbackUrl, profile?.Phone);
+            var twoFAIdentity = identity.Name; // canonicalizated name
+            Logger.API.Info($"Applying identity canonicalization: {identity.RawName}->{twoFAIdentity}");
+            
+            if (Configuration.Current.HasTwoFaIdentityAttribute && !string.IsNullOrEmpty(profile.Custom2FAIdentity))
+            {
+                Logger.API.Info($"Applying 2fa identity attribute: {identity.RawName}->{profile.Custom2FAIdentity}");
+                twoFAIdentity = profile.Custom2FAIdentity;
+            }
+
+            var multiFactorAccessUrl = _api.CreateRequest(twoFAIdentity, identity.RawName, postbackUrl, profile?.Phone);
             return multiFactorAccessUrl;
         }
     }

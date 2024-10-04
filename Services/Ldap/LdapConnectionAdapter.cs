@@ -42,7 +42,7 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap
             return new LdapConnectionAdapter(conn, new FullyQualifiedDomainName(domain), logger);
         }
 
-        public SearchResponse Search(string baseDn, string filter, SearchScope scope, params string[] attributes)
+        public SearchResponse Search(string baseDn, string filter, SearchScope scope, bool chaseRefs, params string[] attributes)
         {
             if (string.IsNullOrEmpty(baseDn))
             {
@@ -61,6 +61,8 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap
 
             var searchRequest = new SearchRequest(baseDn, filter, scope, attributes);
 
+            _connection.SessionOptions.ReferralChasing = chaseRefs ? ReferralChasingOptions.All : ReferralChasingOptions.None;
+            
             _logger.Info($"Sending search request with params:\r\nbase={baseDn}\r\nfilter={filter}\r\nscope={scope}\r\nattributes={string.Join(";", attributes)}");
             return (SearchResponse)_connection.SendRequest(searchRequest);
         }

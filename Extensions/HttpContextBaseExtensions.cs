@@ -16,7 +16,7 @@ namespace MultiFactor.IIS.Adapter.Extensions
             return new CacheAdapter(httpContext);
         }
 
-        public static bool HasApiUnreachableFlag(this HttpContextBase httpContext)
+        public static bool HasApiUnreachableFlag(this HttpContextBase httpContext, bool trimName = true)
         {
             var name = httpContext?.User?.Identity?.Name;
             if (string.IsNullOrEmpty(name))
@@ -24,7 +24,12 @@ namespace MultiFactor.IIS.Adapter.Extensions
                 return false;
             }
 
-            return httpContext.GetCacheAdapter().GetApiUnreachable(Util.CanonicalizeUserName(name));
+            // for owa we dont want trim username, because owa send netbiosname
+            // but for compatibility with Ms365 we use flag
+            if (trimName)
+                return httpContext.GetCacheAdapter().GetApiUnreachable(Util.CanonicalizeUserName(name));
+            else
+                return httpContext.GetCacheAdapter().GetApiUnreachable(name);
         }
     }
 }

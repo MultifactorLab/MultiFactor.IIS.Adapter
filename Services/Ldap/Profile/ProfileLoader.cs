@@ -10,21 +10,23 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
     {
         private readonly LdapConnectionAdapter _adapter;
         private readonly Configuration _config;
+        private readonly Logger _logger;
 
-        public ProfileLoader(LdapConnectionAdapter adapter, Configuration config)
+        public ProfileLoader(LdapConnectionAdapter adapter, Configuration config, Logger logger)
         {
             _adapter = adapter ?? throw new ArgumentNullException(nameof(adapter));
             _config = config ?? throw new ArgumentNullException(nameof(config));
+            _logger = logger;
         }
 
-        public ILdapProfile Load(string samAccountName)
+        public ILdapProfile Load(LdapIdentity user)
         {
-            if (string.IsNullOrWhiteSpace(samAccountName))
+            if (string.IsNullOrWhiteSpace(user.Name))
             {
-                throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(user));
             }
 
-            var profile = new LdapProfile(samAccountName, _config);
+            var profile = new LdapProfile(user, _config);
 
             var queryAttributes = new List<string>();
             queryAttributes.AddRange(_config.PhoneAttributes);
@@ -33,15 +35,38 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
                 queryAttributes.Add(_config.TwoFaIdentityAttribute);
             }
             
-            var baseDn = _adapter.Domain.GetDn();
-            var searchFilter = $"(&(sAMAccountName={samAccountName})(objectClass=user))";
+            var baseDn = _adapter.Domain.GetDn(); 
 
-            var response = _adapter.Search(baseDn, searchFilter, SearchScope.Subtree, queryAttributes.ToArray());
-            if (response.Entries.Count == 0)
+            var searchFilter = $"(&(objectClass=user)({user.TypeName}={user.Name}))";
+
+            //only this domain
+            var response = _adapter.Search(baseDn, searchFilter, SearchScope.Subtree,false, queryAttributes.ToArray());
+            
+            if (response.Entries.Count != 0)
             {
+                // very noisy log,only for debug
+                // _logger.Info($"Success search for {user.Name} in {baseDn} with filter {searchFilter}, {response.Entries.Count} entries");
+                FillProfile(response, queryAttributes, profile);
                 return profile;
             }
 
+            //with ReferralChasing 
+            response = _adapter.Search(baseDn, searchFilter, SearchScope.Subtree, true, queryAttributes.ToArray());
+
+            if (response.Entries.Count != 0)
+            {
+                // very noisy log,only for debug
+                // _logger.Info($"Success referral search for {user} in {baseDn} with filter {searchFilter}, {response.Entries.Count} entries");
+                FillProfile(response, queryAttributes, profile);
+                return profile;
+            }
+            
+            _logger.Info($"User {user} was not found in {baseDn}");
+            return profile;
+        }
+
+        private static void FillProfile(SearchResponse response, List<string> queryAttributes, LdapProfile profile)
+        {
             var attributes = response.Entries[0].Attributes;
             foreach (var attr in queryAttributes)
             {
@@ -51,8 +76,6 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
                 
                 profile.AddAttribute(attr, values);
             }
-            
-            return profile;
         }
     }
 }

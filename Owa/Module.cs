@@ -1,6 +1,7 @@
 ﻿using MultiFactor.IIS.Adapter.Core;
 using MultiFactor.IIS.Adapter.Extensions;
 using MultiFactor.IIS.Adapter.Services;
+using MultiFactor.IIS.Adapter.Services.Ldap;
 using System;
 using System.Linq;
 using System.Security.Principal;
@@ -68,14 +69,13 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            var user = context.User.Identity.Name;
-            if (user.StartsWith("S-1-5-21")) //SID
+            var user = LdapIdentity.Parse(context.User.Identity.Name);
+            if (user.RawName.StartsWith("S-1-5-21")) //SID
             {
-                user = TryGetUpnFromSid(context.User.Identity);
+                user = LdapIdentity.Parse(TryGetUpnFromSid(context.User.Identity));
             }
 
-            var canonicalUserName = Util.CanonicalizeUserName(user);
-            if (Constants.EXCHANGE_SYSTEM_MAILBOX_PREFIX.Any(sm => canonicalUserName.StartsWith(sm)))
+            if (Constants.EXCHANGE_SYSTEM_MAILBOX_PREFIX.Any(sm => user.Name.StartsWith(sm)))
             {
                 //system mailbox
                 return;
@@ -93,8 +93,8 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
 
             var ad = new ActiveDirectoryService(context.GetCacheAdapter(), Logger.Owa);
-            var secondFactorRequired = new UserRequiredSecondFactor(ad);
-            if (!secondFactorRequired.Execute(canonicalUserName))
+            var secondFactorRequired = new UserRequiredSecondFactor(ad, Logger.Owa);
+            if (!secondFactorRequired.Execute(user))
             {
                 //bypass 2fa
                 return;
@@ -102,9 +102,9 @@ namespace MultiFactor.IIS.Adapter.Owa
 
             //mfa
             var valSrv = new TokenValidationService(Logger.Owa);
-            var checker = new AuthChecker(context, valSrv);
-            var isAuthenticatedByMultifactor = checker.IsAuthenticated(user);
-            if (isAuthenticatedByMultifactor || context.HasApiUnreachableFlag())
+            var checker = new AuthChecker(context, valSrv, Logger.Owa);
+            var isAuthenticatedByMultifactor = checker.IsAuthenticated(user.RawName);
+            if (isAuthenticatedByMultifactor || context.HasApiUnreachableFlag(false))
             {
                 return;
             }

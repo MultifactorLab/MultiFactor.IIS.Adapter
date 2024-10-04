@@ -1,4 +1,5 @@
 ﻿using MultiFactor.IIS.Adapter.Extensions;
+using MultiFactor.IIS.Adapter.Interop;
 using MultiFactor.IIS.Adapter.Services.Ldap;
 using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
 using System;
@@ -22,14 +23,14 @@ namespace MultiFactor.IIS.Adapter.Services
             _config = Configuration.Current;
         }
 
-        public ILdapProfile GetProfile(string samAccountName)
+        public ILdapProfile GetProfile(LdapIdentity identity)
         {
-            if (samAccountName is null)
+            if (identity is null)
             {
-                throw new ArgumentNullException(nameof(samAccountName));
+                throw new ArgumentNullException(nameof(identity));
             }
 
-            var profile = _cache.GetProfile(samAccountName);
+            var profile = _cache.GetProfile(identity.RawName);
             if (profile != null)
             {
                 return profile;
@@ -39,19 +40,31 @@ namespace MultiFactor.IIS.Adapter.Services
             {
                 try
                 {
-                    _logger.Info($"Try load profile from {domain}");
-                    using (var adapter = LdapConnectionAdapter.Create(domain, _logger))
+                    _logger.Info($"Try load {identity.RawName} profile from {domain}");
+                    UserSearchContext searchContext;
+                    if (identity.HasNetbiosName())
                     {
-                        var loader = new ProfileLoader(adapter, _config);
-                        profile = loader.Load(samAccountName);
+                        searchContext = new NetbiosService(_logger).ConvertToUpnUser(identity, domain);
+                    }
+                    else
+                    {
+                        _logger.Warn($"Something strange: user {identity.RawName} has not netbiosname. Identity: {identity.Name}, {identity.TypeName}, {identity.NetBiosName}");
+                        searchContext = new UserSearchContext(domain, identity.Name, identity.RawName);
+                    }
+
+                    _logger.Info($"Start load user profile in context: {searchContext}");
+                    using (var adapter = LdapConnectionAdapter.Create(searchContext.Domain, _logger))
+                    {
+                        var loader = new ProfileLoader(adapter, _config, _logger);
+                        profile = loader.Load(searchContext.UserIdentity);
                         if (profile == null)
                         {
                             continue;
                         } 
                         
-                        _logger.Info($"Profile loaded for user '{profile.SamAccountName}'");
+                        _logger.Info($"Profile loaded for user '{profile.RawUserName}'");
                         
-                        _cache.SetProfile(samAccountName, profile);
+                        _cache.SetProfile(identity.RawName, profile);
                         return profile;
                     }
                 }
@@ -63,6 +76,8 @@ namespace MultiFactor.IIS.Adapter.Services
                 {
                     _logger.Error(ex.ToString());
                 }
+                // very noisy, only for debug
+                // _logger.Info($"Get profile iteration for {domain} finished");
             }
             return null;
         }
@@ -70,21 +85,21 @@ namespace MultiFactor.IIS.Adapter.Services
         /// <summary>
         /// Only group members should 2fa
         /// </summary>
-        public bool ValidateMembership(string samAccountName)
+        public bool ValidateMembership(LdapIdentity identity)
         {
-            var cachedMembership = _cache.GetMembership(samAccountName);
+            var cachedMembership = _cache.GetMembership(identity.RawName);
             if (cachedMembership != null)
             {
                 return cachedMembership.Value;
             }
 
-            var isMember = ValidateMembershipInternal(samAccountName);
-            _cache.SetMembership(samAccountName, isMember);
+            var isMember = ValidateMembershipInternal(identity);
+            _cache.SetMembership(identity.RawName, isMember);
 
             return isMember;
         }
 
-        private bool ValidateMembershipInternal(string samAccountName)
+        private bool ValidateMembershipInternal(LdapIdentity identity)
         {
             var groupName = _config.ActiveDirectory2FaGroup;
 
@@ -111,14 +126,29 @@ namespace MultiFactor.IIS.Adapter.Services
                             return true; //group not exists, let unknown result will be true
                         }
 
-                        var searchFilter = $"(&(sAMAccountName={samAccountName})(memberOf:1.2.840.113556.1.4.1941:={groupDn}))";
-                        var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, "DistinguishedName");
+                        _logger.Info($"Try validate membership {identity.RawName} profile from {domain} in {groupDn}");
+                        UserSearchContext searchContext;
+                        if (identity.HasNetbiosName())
+                        {
+                            searchContext = new NetbiosService(_logger).ConvertToUpnUser(identity, domain);
+                        }
+                        else
+                        {
+                            _logger.Warn($"Something strange: user {identity.RawName} has not netbiosname. Identity: {identity.Name}, {identity.TypeName}, {identity.NetBiosName}");
+                            searchContext = new UserSearchContext(domain, identity.Name, identity.RawName);
+                        }
+
+                        var searchFilter = $"(&({searchContext.UserIdentity.TypeName}={searchContext.UserIdentity.Name})(memberOf:1.2.840.113556.1.4.1941:={groupDn}))";
+                        var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, true, "DistinguishedName");
 
                         if (response.Entries.Count != 0)
                         {
+                            _logger.Info($"{identity.RawName} is member of {groupName}");
                             return true;
                         }
                     }
+                    // very noisy, only for debug
+                    // _logger.Info($"ValidateMembership iteration for {domain} finished");
                 }
                 return false;
             }
@@ -140,10 +170,18 @@ namespace MultiFactor.IIS.Adapter.Services
         private string GetGroupDn(LdapConnectionAdapter adapter, string name, string baseDn)
         {
             var searchFilter = $"(&(objectCategory=group)(name={name}))";
-            var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, "DistinguishedName");
-            return response.Entries.Count == 0 
-                ? null 
-                : response.Entries[0].DistinguishedName;
+            var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, true, "DistinguishedName");
+            if(response.Entries.Count != 0)
+            {
+                var groupDn = response.Entries[0].DistinguishedName;
+                _logger.Info($"Group {name} was found:{groupDn}");
+                return groupDn;
+            }
+            else
+            {
+                _logger.Info($"Group {name} was not found");
+                return null;
+            }
         }
     }
 }
