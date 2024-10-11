@@ -6,7 +6,7 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
 {
     internal class LdapProfile : ILdapProfile
     {
-        public LdapIdentity BaseDn { get; }
+        private readonly LdapIdentity _identity;
         private readonly string _twoFaIdentityAttrName;
         private readonly string[] _phoneAttrs;
 
@@ -15,12 +15,12 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
         /// <summary>
         /// Name we got from the authentication pipeline. Most often it is netbios
         /// </summary>
-        public string RawUserName => BaseDn.RawName;
+        public string RawUserName => _identity.RawName;
 
         /// <summary>
         /// Normalized name. Can be used to search in the AD and as 2fa identity by default.
         /// </summary>
-        public string FriendlyUserName => BaseDn.Name;
+        public string FriendlyUserName => _identity.Name;
 
         /// <summary>
         /// Use only if corresponding setting is specified in the config
@@ -43,22 +43,22 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
             }
         }
 
-        public LdapProfile(LdapIdentity baseDn, Configuration configuration)
+        public LdapProfile(LdapIdentity identity, Configuration configuration)
         {
-            if (baseDn == null)
+            if (identity == null)
             {
-                throw new ArgumentException($"'{nameof(baseDn)}' cannot be null.", nameof(baseDn));
+                throw new ArgumentException($"'{nameof(identity)}' cannot be null.", nameof(identity));
             }
             
             if (configuration == null)
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
-            BaseDn = baseDn;
-            _attrs[baseDn.TypeName] = new HashSet<string>{ baseDn.Name };
+            _identity = identity;
+            _attrs[identity.TypeName] = new HashSet<string>{ identity.Name };
             _twoFaIdentityAttrName = configuration.HasTwoFaIdentityAttribute 
                 ? configuration.TwoFaIdentityAttribute 
-                : baseDn.TypeName;
+                : identity.TypeName;
 
             var phoneAttrs = new List<string>
             {
