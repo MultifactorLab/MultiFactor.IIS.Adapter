@@ -1,5 +1,6 @@
 ﻿using MultiFactor.IIS.Adapter.Core;
 using MultiFactor.IIS.Adapter.Extensions;
+using MultiFactor.IIS.Adapter.Properties;
 using MultiFactor.IIS.Adapter.Services;
 using System;
 using System.Linq;
@@ -24,15 +25,10 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            //mfa response
-            var cookie = new HttpCookie(Constants.COOKIE_NAME, token)
-            {
-                HttpOnly = true,
-                Secure = true
-            };
-
-            context.Response.Cookies.Add(cookie);
-            context.Response.Redirect(context.Request.ApplicationPath, true);
+            var complete2FaHtml = Resources.complete_2fa_html;
+            complete2FaHtml = complete2FaHtml.Replace("%MULTIFACTOR_COOKIE%", token);
+            context.Response.Write(complete2FaHtml);
+            context.Response.End();
         }
 
         public override void OnPostAuthorizeRequest(HttpContextBase context)
