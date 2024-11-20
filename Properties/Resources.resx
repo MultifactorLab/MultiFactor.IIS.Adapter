@@ -125,16 +125,31 @@
         &lt;title&gt;Finishing 2FA...&lt;/title&gt;
     &lt;/head&gt;
     &lt;body&gt;
-        &lt;div class="column right"&gt;
-            &lt;p&gt;
-                Finishing 2FA...
-            &lt;/p&gt;
-        &lt;/div&gt;
+        &lt;div&gt;Finishing 2FA...&lt;/div&gt;
         &lt;script type="text/javascript"&gt;
             document.addEventListener("DOMContentLoaded", (event) =&gt; {
                 const multifactorCookie = "%MULTIFACTOR_COOKIE%";
                 const domain = window.location.hostname;
-                document.cookie = `multifactor=${multifactorCookie}; domain=${domain}; secure;`;
+                document.cookie = `multifactor=${multifactorCookie}; path=/; domain=${domain}; secure; expires=${new Date(Date.now() + (3600 * 1000 * 24))}`;
+                window.location.href = "/";
+            });
+        &lt;/script&gt;
+    &lt;/body&gt;
+&lt;/html&gt;</value>
+  </data>
+  <data name="complete_logout.html" xml:space="preserve">
+    <value>&lt;!DOCTYPE html&gt;
+&lt;html&gt;
+    &lt;head&gt;
+        &lt;meta name="viewport" content="width=device-width, initial-scale=1"&gt;
+        &lt;title&gt;Finishing 2FA...&lt;/title&gt;
+    &lt;/head&gt;
+    &lt;body&gt;
+        &lt;div&gt;Finishing Logout...&lt;/div&gt;
+        &lt;script type="text/javascript"&gt;
+            document.addEventListener("DOMContentLoaded", (event) =&gt; {
+                const domain = window.location.hostname;
+                document.cookie = `multifactor=; path=/; domain=${domain}; secure; expires=${new Date(Date.now() - (10 * 3600 * 1000 * 24))}`;
                 window.location.href = "/";
             });
         &lt;/script&gt;

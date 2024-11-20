@@ -25,10 +25,8 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            var complete2FaHtml = Resources.complete_2fa_html;
-            complete2FaHtml = complete2FaHtml.Replace("%MULTIFACTOR_COOKIE%", token);
-            context.Response.Write(complete2FaHtml);
-            context.Response.End();
+            var complete2FaHtml = Resources.complete_2fa_html.Replace("%MULTIFACTOR_COOKIE%", token);
+            SendPage(context, complete2FaHtml);
         }
 
         public override void OnPostAuthorizeRequest(HttpContextBase context)
@@ -44,8 +42,7 @@ namespace MultiFactor.IIS.Adapter.Owa
             //logoff page
             if (path.Contains("logoff.owa"))
             {
-                //clean mfa cookie
-                context.Response.Cookies[Constants.COOKIE_NAME].Expires = DateTime.UtcNow.AddDays(-1);
+                SendPage(context, Resources.complete_logout_html);
                 return;
             }
 
@@ -117,6 +114,15 @@ namespace MultiFactor.IIS.Adapter.Owa
             //redirect to mfa
             var redirectUrl = $"{context.Request.ApplicationPath}/{Constants.MULTIFACTOR_PAGE}";
             context.Response.Redirect(redirectUrl);
+        }
+
+        private void SendPage(HttpContextBase context, string html)
+        {
+            context.Response.Clear();
+            context.Response.ClearContent();
+            context.Response.Write(html);
+            context.Response.Flush();
+            context.Response.End();
         }
 
         private void ProcessMultifactorRequest(HttpContextBase context)

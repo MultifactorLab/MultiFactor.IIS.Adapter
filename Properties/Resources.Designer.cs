@@ -68,19 +68,36 @@ namespace MultiFactor.IIS.Adapter.Properties {
         ///        &lt;title&gt;Finishing 2FA...&lt;/title&gt;
         ///    &lt;/head&gt;
         ///    &lt;body&gt;
-        ///        &lt;div class=&quot;column right&quot;&gt;
-        ///            &lt;p&gt;
-        ///                Finishing 2FA...
-        ///            &lt;/p&gt;
-        ///        &lt;/div&gt;
+        ///        &lt;div&gt;Finishing 2FA...&lt;/div&gt;
         ///        &lt;script type=&quot;text/javascript&quot;&gt;
         ///            document.addEventListener(&quot;DOMContentLoaded&quot;, (event) =&gt; {
         ///                const multifactorCookie = &quot;%MULTIFACTOR_COOKIE%&quot;;
-        ///                const domain = [остаток строки не уместился]&quot;;.
+        ///                const domain = window.location.hostname;
+        ///                document.cookie = `multifactor=${multifa [остаток строки не уместился]&quot;;.
         /// </summary>
         internal static string complete_2fa_html {
             get {
                 return ResourceManager.GetString("complete_2fa.html", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Ищет локализованную строку, похожую на &lt;!DOCTYPE html&gt;
+        ///&lt;html&gt;
+        ///    &lt;head&gt;
+        ///        &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+        ///        &lt;title&gt;Finishing 2FA...&lt;/title&gt;
+        ///    &lt;/head&gt;
+        ///    &lt;body&gt;
+        ///        &lt;div&gt;Finishing Logout...&lt;/div&gt;
+        ///        &lt;script type=&quot;text/javascript&quot;&gt;
+        ///            document.addEventListener(&quot;DOMContentLoaded&quot;, (event) =&gt; {
+        ///                const domain = window.location.hostname;
+        ///                document.cookie = `multifactor=; path=/; domain=${domain}; secure; expires=${new Date(Date.now() - (10 * [остаток строки не уместился]&quot;;.
+        /// </summary>
+        internal static string complete_logout_html {
+            get {
+                return ResourceManager.GetString("complete_logout.html", resourceCulture);
             }
         }
     }
