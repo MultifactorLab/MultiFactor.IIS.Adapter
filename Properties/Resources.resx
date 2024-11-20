@@ -130,7 +130,7 @@
             document.addEventListener("DOMContentLoaded", (event) =&gt; {
                 const multifactorCookie = "%MULTIFACTOR_COOKIE%";
                 const domain = window.location.hostname;
-                document.cookie = `multifactor=${multifactorCookie}; path=/; domain=${domain}; secure; expires=${new Date(Date.now() + (3600 * 1000 * 24))}`;
+                document.cookie = `multifactor=${multifactorCookie}; path=/; domain=${domain}; secure;`;
                 window.location.href = "/";
             });
         &lt;/script&gt;
