@@ -50,7 +50,7 @@ Outlook Web Access (OWA) is an Exchange web-client that uses IIS capabilities.
 1. The component needs direct access to ``api.multifactor.ru`` via TCP port 443 (TLS) or via HTTP proxy;
 2. Outlook Web Access must have a valid SSL certificate;
 3. The server must be set to the correct time;
-4. Net Framework version 4.8 or higher must be installed on the server.
+4. Net Framework version 4.8 must be installed on the server.
 
 ## Configuration
 
