@@ -95,7 +95,7 @@ Outlook Web Access (OWA) is an Exchange web-client that uses IIS capabilities.
    
 ## Owa download domains requirements
 
-The download domain must be a subdomain of the owa domain.
+The download domain must be a subdomain of the owa domain. [(Source)](https://learn.microsoft.com/ru-ru/exchange/plan-and-deploy/post-installation-tasks/security-best-practices/exchange-download-domains?view=exchserver-2019)
 
 Example:
 

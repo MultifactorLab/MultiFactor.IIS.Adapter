@@ -93,7 +93,8 @@ Outlook Web Access (OWA) — веб-клиент Exchange, использующ�
 
 ## Требования к доменам загрузки OWA
 
-Домен загрузки должен быть поддоменом основного домена OWA.
+Домен загрузки должен быть поддоменом основного домена OWA. [(Источник)](https://learn.microsoft.com/ru-ru/exchange/plan-and-deploy/post-installation-tasks/security-best-practices/exchange-download-domains?view=exchserver-2019)
+
 
 Пример:
 
