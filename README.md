@@ -49,7 +49,8 @@ Outlook Web Access (OWA) is an Exchange web-client that uses IIS capabilities.
 
 1. The component needs direct access to ``api.multifactor.ru`` via TCP port 443 (TLS) or via HTTP proxy;
 2. Outlook Web Access must have a valid SSL certificate;
-3. The server must be set to the correct time.
+3. The server must be set to the correct time;
+4. Net Framework version 4.8 must be installed on the server.
 
 ## Configuration
 
@@ -91,6 +92,17 @@ Outlook Web Access (OWA) is an Exchange web-client that uses IIS capabilities.
    ```xml
    <add key="multifactor:api-proxy" value="http://proxy:3128" />
    ```
+   
+## Owa download domains requirements
+
+The download domain must be a subdomain of the owa domain. [(Source)](https://learn.microsoft.com/ru-ru/exchange/plan-and-deploy/post-installation-tasks/security-best-practices/exchange-download-domains?view=exchserver-2019)
+
+Example:
+
+|       ---       |                         --- |
+|:---------------:|----------------------------:|
+|   owa domain    |             owa.example.com |
+| download domain | attachments.owa.example.com |
 
 ## More Info
 
