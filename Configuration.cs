@@ -8,6 +8,8 @@ namespace MultiFactor.IIS.Adapter
 {
     public class Configuration
     {
+        private const int _defaultSessionLifeTimeInHours = 1;
+        private const int _reRequestDelayInMinutes = 5;
         private readonly string _activeDirectoryDomain;
         public string[] ActiveDirectoryDomains =>
             (_activeDirectoryDomain ?? string.Empty).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
@@ -29,7 +31,8 @@ namespace MultiFactor.IIS.Adapter
         public bool HasTwoFaIdentityAttribute => !string.IsNullOrWhiteSpace(TwoFaIdentityAttribute);
         public string TwoFaIdentityAttribute { get; private set; }
         public string[] PhoneAttributes { get; private set; } = new string[0];
-        
+        public int SessionLifeTimeInHours { get; private set; }
+        public int ReRequestDelayInMinutes { get; private set; }
         
         private static readonly Lazy<Configuration> _current = new Lazy<Configuration>(Load);
         public static Configuration Current => _current.Value;
@@ -56,6 +59,8 @@ namespace MultiFactor.IIS.Adapter
 
             var activeDirectory2FaGroupSetting = appSettings[ConfigurationKeys.ActiveDirectory2FAGroup];
             var activeDirectoryDomain = appSettings[ConfigurationKeys.ActiveDirectoryDomain];
+            var sessionLifeTime = appSettings[ConfigurationKeys.SessionLifeTimeInHours];
+            var reRequestDelay = appSettings[ConfigurationKeys.SecondFactorReRequestDelayInMinutes];
 
             var domain = GetDomain(activeDirectoryDomain);
 
@@ -84,7 +89,9 @@ namespace MultiFactor.IIS.Adapter
             ReadPhoneAttributeSetting(appSettings, config);
             ReadBypassWhenApiUnreachableSetting(appSettings, config);
             ReadApiLifeCheckIntervalSetting(appSettings, config);
-
+            SetSessionLifeTime(sessionLifeTime, config);
+            SetReRequestDelay(reRequestDelay, config);
+            
             return config;
         }
 
@@ -193,6 +200,40 @@ namespace MultiFactor.IIS.Adapter
             }
 
             configuration.BypassSecondFactorWhenApiUnreachable = parsed;
+        }
+
+        private static void SetSessionLifeTime(string value, Configuration configuration)
+        {
+            if (int.TryParse(value, out int parsed))
+            {
+                if (parsed <= 0)
+                {
+                    configuration.SessionLifeTimeInHours = _defaultSessionLifeTimeInHours;
+                }
+
+                configuration.SessionLifeTimeInHours = parsed;
+            }
+            else
+            {
+                configuration.SessionLifeTimeInHours = _defaultSessionLifeTimeInHours;
+            }
+        }
+        
+        private static void SetReRequestDelay(string value, Configuration configuration)
+        {
+            if (int.TryParse(value, out int parsed))
+            {
+                if (parsed <= 0)
+                {
+                    configuration.ReRequestDelayInMinutes = _reRequestDelayInMinutes;
+                }
+
+                configuration.ReRequestDelayInMinutes = parsed;
+            }
+            else
+            {
+                configuration.ReRequestDelayInMinutes = _reRequestDelayInMinutes;
+            }
         }
     }
 }

@@ -19,5 +19,7 @@
         public static readonly string UseUpnAsIdentity = $"{_prefix}:use-upn-as-identity";
         public static readonly string TwoFAIdentityAttribyte = $"{_prefix}:use-attribute-as-identity";
         public static readonly string PhoneAttribute = $"{_prefix}:phone-attribute";
+        public static readonly string SessionLifeTimeInHours = $"{_prefix}:session-life-time";
+        public static readonly string SecondFactorReRequestDelayInMinutes = $"{_prefix}:second-factor-re-request-delay";
     }
 }
