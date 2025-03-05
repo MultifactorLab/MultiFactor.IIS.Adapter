@@ -6,5 +6,6 @@ namespace MultiFactor.IIS.Adapter.Services
     {
         public static string CreateTraceOwa() => $"iis-owa-{Guid.NewGuid()}";
         public static string CreateTraceCrm() => $"iis-crm-{Guid.NewGuid()}";
+        public static string CreateTraceActiveSync() => $"iis-eas-{Guid.NewGuid()}";
     }
 }

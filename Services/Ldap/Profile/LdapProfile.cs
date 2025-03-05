@@ -30,6 +30,14 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
             }
         }
 
+        public string Email
+        {
+            get
+            {
+                return GetAttr("mail").FirstOrDefault() ?? GetAttr("email").FirstOrDefault();
+            }
+        }
+
         public LdapProfile(string samAccountName, Configuration configuration)
         {
             if (string.IsNullOrWhiteSpace(samAccountName))
