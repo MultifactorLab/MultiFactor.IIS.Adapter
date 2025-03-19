@@ -16,6 +16,9 @@ namespace MultiFactor.IIS.Adapter.Services
             var requestQueryString = context.Request.QueryString;
             var requestHeaders = context.Request.Headers;
             var appPath = context.Request.ApplicationPath;
+            var identity = context.User?.Identity?.Name;
+            var authType = context.User?.Identity?.AuthenticationType;
+            var isAuthenticated = context.User?.Identity?.IsAuthenticated ?? false;
             var builder = new StringBuilder("Request: ");
 
             builder.AppendLine($"{nameof(context.Request.HttpMethod)} = {messageHttpMethod}");
@@ -23,6 +26,10 @@ namespace MultiFactor.IIS.Adapter.Services
             builder.AppendLine($"{nameof(context.Request.Path)} = {requestPath}");
             builder.AppendLine($"{nameof(context.Request.QueryString)} = {requestQueryString}");
             builder.AppendLine($"{nameof(context.Request.ApplicationPath)} = {appPath}");
+            
+            builder.AppendLine($"{nameof(context.User.Identity.Name)} = {identity}");
+            builder.AppendLine($"{nameof(context.User.Identity.IsAuthenticated)} = {isAuthenticated}");
+            builder.AppendLine($"{nameof(context.User.Identity.AuthenticationType)} = {authType}");
             
             string user = context.Request.Params["User"];
             builder.AppendLine("User = " + user);
@@ -37,8 +44,10 @@ namespace MultiFactor.IIS.Adapter.Services
 
             var cmd = context.Request.Params["Cmd"];
             if (!string.IsNullOrWhiteSpace(cmd))
+            {
                 builder.AppendLine("Cmd = " + cmd);
-            
+            }
+
             builder.AppendLine("--------------------------");
             builder.AppendLine($"Headers:");
             AddParams(builder, requestHeaders);

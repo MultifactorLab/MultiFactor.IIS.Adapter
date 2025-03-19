@@ -6,7 +6,7 @@ namespace MultiFactor.IIS.Adapter.Services
 {
     internal static class MfaApiRequestExecutorFactory
     {
-        public static MfaApiRequestExecutor CreateOwa(HttpContextBase context)
+        public static MfaApiRequestExecutor CreateOwa(HttpContextBase context, string forcedIdentity = null)
         {
             if (context is null)
             {
@@ -17,7 +17,7 @@ namespace MultiFactor.IIS.Adapter.Services
             var api = new MultiFactorApiClient(Logger.API, MfTraceIdFactory.CreateTraceOwa);
             var getter = new AccessUrl(ad, api);
 
-            return new MfaApiRequestExecutor(context, getter, Logger.Owa);
+            return new MfaApiRequestExecutor(context, getter, Logger.Owa, forcedIdentity);
         }
 
         public static MfaApiRequestExecutor CreateCrm(HttpContextBase context)

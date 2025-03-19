@@ -14,9 +14,9 @@ namespace MultiFactor.IIS.Adapter.Services
             _validationService = validationService ?? throw new ArgumentNullException(nameof(validationService));
         }
 
-        public bool IsAuthenticated(string rawUsername)
+        public bool IsAuthenticated(string rawUsername, string cookieName = Constants.COOKIE_NAME)
         {
-            var multifactorCookie = _context.Request.Cookies[Constants.COOKIE_NAME];
+            var multifactorCookie = _context.Request.Cookies[cookieName];
             if (multifactorCookie == null)
             {
                 return false;

@@ -1,18 +1,29 @@
-﻿using MultiFactor.IIS.Adapter.Core;
 using MultiFactor.IIS.Adapter.Extensions;
-using MultiFactor.IIS.Adapter.Properties;
 using MultiFactor.IIS.Adapter.Services;
 using System;
 using System.Linq;
+using System.Runtime.Caching;
 using System.Security.Principal;
 using System.Web;
 
 namespace MultiFactor.IIS.Adapter.Owa
 {
-    public class Module : HttpModuleBase
+    public class Module : IHttpModule
     {
-        public override void OnBeginRequest(HttpContextBase context)
+        private MemoryCache _memoryCache;
+        private HttpApplication _httpApplication;
+
+        public void Init(HttpApplication context)
         {
+            _httpApplication = context;
+            _memoryCache = MemoryCache.Default;
+            context.BeginRequest += OnBeginRequest;
+            context.PostAuthorizeRequest += OnPostAuthorizeRequest;
+        }
+
+        public void OnBeginRequest(object sender, EventArgs e)
+        {
+            HttpContextBase context = new HttpContextWrapper(((HttpApplication)sender).Context);
             var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
             if (path.Contains("lang.owa"))
             {
@@ -25,12 +36,14 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            var complete2FaHtml = Resources.complete_2fa_html.Replace("%MULTIFACTOR_COOKIE%", token);
-            SendPage(context, complete2FaHtml);
+            var cookie = new HttpCookie(BuildCookieName(context), token) { Path = context.Request.ApplicationPath };
+            context.AddCookie(cookie);
+            context.Response.Redirect(context.Request.ApplicationPath ?? "/");
         }
 
-        public override void OnPostAuthorizeRequest(HttpContextBase context)
+        public void OnPostAuthorizeRequest(object sender, EventArgs e)
         {
+            HttpContextBase context = new HttpContextWrapper(((HttpApplication)sender).Context);
             var path = context.Request.Url.GetComponents(UriComponents.Path, UriFormat.Unescaped);
 
             //static resources
@@ -40,9 +53,17 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
 
             //logoff page
-            if (path.Contains("logoff.owa"))
+            if (path.ToLower().Contains("logoff"))
             {
-                SendPage(context, Resources.complete_logout_html);
+                var cookieName = BuildCookieName(context);
+                var cookie = context.Request.Cookies[cookieName];
+                if (cookie != null)
+                {
+                    context.RemoveCookie(cookieName);
+                    _memoryCache.Remove(cookie?.Value);
+                }
+
+                context.Response.Redirect(context.Request.ApplicationPath);
                 return;
             }
 
@@ -53,9 +74,12 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
 
             //language selection page
-            if (path.Contains("languageselection.aspx") || path.Contains("lang.owa")) return;
+            if (path.Contains("languageselection.aspx") || path.Contains("lang.owa"))
+            {
+                return;
+            }
 
-            if (!context.User.Identity.IsAuthenticated)
+            if (context.User?.Identity?.IsAuthenticated != true)
             {
                 //not yet authenticated with login/pwd
                 return;
@@ -79,7 +103,24 @@ namespace MultiFactor.IIS.Adapter.Owa
             {
                 if (context.Request.HttpMethod == "POST")
                 {
-                    ProcessMultifactorRequest(context);
+                    string identityKey = context.Request.Cookies["identity"]?.Value;
+                    
+                    if (string.IsNullOrWhiteSpace(identityKey))
+                    {
+                        AccessDenied(context);
+                    }
+                    
+                    var identity = _memoryCache.Get(identityKey)?.ToString();
+                    
+                    if (string.IsNullOrWhiteSpace(identity))
+                    {
+                        AccessDenied(context);
+                    }
+
+                    context.RemoveCookie("identity");
+                    _memoryCache.Remove(identityKey);
+
+                    ProcessMultifactorRequest(context, identity);
                 }
 
                 return;
@@ -96,7 +137,7 @@ namespace MultiFactor.IIS.Adapter.Owa
             //mfa
             var valSrv = new TokenValidationService(Logger.Owa);
             var checker = new AuthChecker(context, valSrv);
-            var isAuthenticatedByMultifactor = checker.IsAuthenticated(user);
+            var isAuthenticatedByMultifactor = checker.IsAuthenticated(user, BuildCookieName(context));
             if (isAuthenticatedByMultifactor || context.HasApiUnreachableFlag())
             {
                 return;
@@ -112,20 +153,18 @@ namespace MultiFactor.IIS.Adapter.Owa
             }
 
             //redirect to mfa
-            var redirectUrl = $"{context.Request.ApplicationPath}/{Constants.MULTIFACTOR_PAGE}";
-            context.Response.Redirect(redirectUrl);
+            if (canonicalUserName != "system")
+            {
+                var redirectUrl = $"{context.Request.ApplicationPath}/{Constants.MULTIFACTOR_PAGE}";
+                var cookieName = "identity";
+                var cacheKey = Guid.NewGuid().ToString();
+                _memoryCache.Set(cacheKey, canonicalUserName, DateTime.Now.AddMinutes(6));
+                context.AddCookie(new HttpCookie(cookieName, cacheKey) { Expires = DateTime.Now.AddMinutes(5) });
+                context.Response.Redirect(redirectUrl);
+            }
         }
 
-        private void SendPage(HttpContextBase context, string html)
-        {
-            context.Response.Clear();
-            context.Response.ClearContent();
-            context.Response.Write(html);
-            context.Response.Flush();
-            context.Response.End();
-        }
-
-        private void ProcessMultifactorRequest(HttpContextBase context)
+        private void ProcessMultifactorRequest(HttpContextBase context, string forceIdentity = null)
         {
             //check if user session timed-out
             if (!context.User.Identity.IsAuthenticated)
@@ -140,13 +179,7 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            //mfa request
-            if (url.IndexOf("#") == -1)
-            {
-                url += "#path=/mail";
-            }
-
-            var executor = MfaApiRequestExecutorFactory.CreateOwa(context);
+            var executor = MfaApiRequestExecutorFactory.CreateOwa(context, forceIdentity);
             executor.Execute(url, context.Request.ApplicationPath);
         }
 
@@ -174,6 +207,23 @@ namespace MultiFactor.IIS.Adapter.Owa
             {
                 return null;
             }
+        }
+
+        private void AccessDenied(HttpContextBase context)
+        {
+            context.Response.StatusCode = 440;
+            context.Response.End();
+        }
+        
+        private string BuildCookieName(HttpContextBase context)
+        {
+            return Constants.COOKIE_NAME + context.Request.ApplicationPath;
+        }
+
+        public void Dispose()
+        {
+            _httpApplication.BeginRequest -= OnBeginRequest;
+            _httpApplication.PostAuthorizeRequest -= OnPostAuthorizeRequest;
         }
     }
 }
