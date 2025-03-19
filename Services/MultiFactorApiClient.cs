@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using MultiFactor.IIS.Adapter.Core;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
@@ -97,6 +98,48 @@ namespace MultiFactor.IIS.Adapter.Services
                 throw new Exception($"{errmsg}", ex);
             }
         }
+        
+        public MultiFactorAccessRequest CreateNonInteractiveAccessRequest(string methodPath, PersonalData personalData)
+        {
+            var url = $"{Configuration.Current.ApiUrl}{methodPath}";
+            var payload = new
+            {
+                Identity = personalData.Identity,
+                Phone = personalData.Phone,
+                Email = personalData.Email
+            };
+            
+            var str = Util.JsonSerialize(payload);
+            var requestData = Encoding.UTF8.GetBytes(str);
+            var auth = Convert.ToBase64String(
+                Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
+            byte[] responseData = null;
+
+            using (var web = new WebClient())
+            {
+                web.Headers.Add("Content-Type", "application/json");
+                web.Headers.Add("Authorization", $"Basic {auth}");
+                web.Headers.Add("mf-trace-id", _getTraceId());
+
+                if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
+                {
+                    web.Proxy = new WebProxy(Configuration.Current.ApiProxy);
+                }
+
+                responseData = web.UploadData(url, "POST", requestData);
+            }
+
+            var responseJson = Encoding.UTF8.GetString(responseData);
+
+            var response = Util.JsonDeserialize<MultiFactorWebResponse<MultiFactorAccessRequest>>(responseJson);
+
+            if (!response.Success)
+            {
+                throw new Exception($"Got unsuccessful response from API: {responseJson}");
+            }
+
+            return response.Model;
+        }
     }
 
     public class MultiFactorWebResponse<TModel>
@@ -111,5 +154,15 @@ namespace MultiFactor.IIS.Adapter.Services
     public class MultiFactorAccessPage
     {
         public string Url { get; set; }
+    }
+
+    public class MultiFactorAccessRequest
+    {
+        public string Id { get; set; }
+        public string Identity { get; set; }
+        public string Status { get; set; }
+        public string Message { get; set; }
+        public bool Granted => Status == "Granted";
+        public bool Denied => Status == "Denied";
     }
 }

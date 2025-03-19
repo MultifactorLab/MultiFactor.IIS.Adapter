@@ -61,17 +61,22 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Web.Services" />
     <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Runtime.Caching"/>
   </ItemGroup>
   <ItemGroup>
     <Content Include="mfa.aspx" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActiveSync\Module.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="ConfigurationKeys.cs" />
+    <Compile Include="Core\PersonalData.cs" />
     <Compile Include="Extensions\HttpContextBaseExtensions.cs" />
+    <Compile Include="HttpContextBaseExtensions.cs" />
     <Compile Include="MsDynamics365\Module.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Core\HttpModuleBase.cs" />
+    <Compile Include="Owa\Module.cs" />
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DesignTime>True</DesignTime>
@@ -82,7 +87,6 @@
     <Compile Include="Services\MfaApiRequestExecutorFactory.cs" />
     <Compile Include="Owa\UserRequiredSecondFactor.cs" />
     <Compile Include="Services\AuthChecker.cs" />
-    <Compile Include="Owa\Module.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Services\ActiveDirectoryService.cs" />
     <Compile Include="Services\CacheAdapter.cs" />
@@ -96,6 +100,8 @@
     <Compile Include="Services\MultiFactorApiClient.cs" />
     <Compile Include="Services\Ldap\Profile\ProfileLoader.cs" />
     <Compile Include="Services\AccessUrl.cs" />
+    <Compile Include="Services\RequestLogBuilder.cs" />
+    <Compile Include="Services\SecondFactorService.cs" />
     <Compile Include="Services\TokenValidationService.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="WebUtil.cs" />

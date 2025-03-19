@@ -5,5 +5,6 @@
         string SamAccountName { get; }
         string TwoFAIdentity { get; }
         string Phone { get; }
+        string Email { get; }
     }
 }

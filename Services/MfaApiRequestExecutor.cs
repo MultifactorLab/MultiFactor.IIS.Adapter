@@ -9,19 +9,21 @@ namespace MultiFactor.IIS.Adapter.Services
         private readonly HttpContextBase _context;
         private readonly AccessUrl _accessUrl;
         private readonly Logger _logger;
+        private readonly string _forcedIdentity;
 
-        public MfaApiRequestExecutor(HttpContextBase context, AccessUrl accessUrl, Logger logger)
+        public MfaApiRequestExecutor(HttpContextBase context, AccessUrl accessUrl, Logger logger, string forcedIdentity = null)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _accessUrl = accessUrl ?? throw new ArgumentNullException(nameof(accessUrl));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+            _forcedIdentity = forcedIdentity;
         }
 
         public void Execute(string postbackUrl, string appRootPath)
         {
             try
             {
-                var multiFactorAccessUrl = _accessUrl.Get(_context.User.Identity.Name, postbackUrl);
+                var multiFactorAccessUrl = _accessUrl.Get(_forcedIdentity ?? _context.User.Identity.Name, postbackUrl);
                 _context.Response.Redirect(multiFactorAccessUrl, true);
             }
             catch (Exception ex) when (NeedToBypass(ex))

@@ -28,6 +28,8 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
 
             var queryAttributes = new List<string>();
             queryAttributes.AddRange(_config.PhoneAttributes);
+            queryAttributes.Add("mail");
+            queryAttributes.Add("email");
             if (_config.HasTwoFaIdentityAttribute)
             {
                 queryAttributes.Add(_config.TwoFaIdentityAttribute);
