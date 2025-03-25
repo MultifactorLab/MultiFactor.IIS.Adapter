@@ -61,13 +61,16 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Web.Services" />
     <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Runtime.Caching"/>
   </ItemGroup>
   <ItemGroup>
     <Content Include="mfa.aspx" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActiveSync\Module.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="ConfigurationKeys.cs" />
+    <Compile Include="Core\PersonalData.cs" />
     <Compile Include="Extensions\HttpContextBaseExtensions.cs" />
     <Compile Include="MsDynamics365\Module.cs" />
     <Compile Include="Constants.cs" />
@@ -96,6 +99,7 @@
     <Compile Include="Services\MultiFactorApiClient.cs" />
     <Compile Include="Services\Ldap\Profile\ProfileLoader.cs" />
     <Compile Include="Services\AccessUrl.cs" />
+    <Compile Include="Services\RequestLoggerBuilder.cs" />
     <Compile Include="Services\TokenValidationService.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="WebUtil.cs" />
