@@ -1,4 +1,5 @@
 ﻿using MultiFactor.IIS.Adapter.Extensions;
+using MultiFactor.IIS.Adapter.Services.Ldap;
 using System;
 using System.Web;
 
@@ -19,18 +20,20 @@ namespace MultiFactor.IIS.Adapter.Services
 
         public void Execute(string postbackUrl, string appRootPath)
         {
+            var identity = LdapIdentity.Parse(_context.User.Identity.Name);
             try
             {
-                var multiFactorAccessUrl = _accessUrl.Get(_context.User.Identity.Name, postbackUrl);
+                _logger.Info($"Execute 2fa for {identity.RawName}");
+                var multiFactorAccessUrl = _accessUrl.Get(identity, postbackUrl);
                 _context.Response.Redirect(multiFactorAccessUrl, true);
             }
             catch (Exception ex) when (NeedToBypass(ex))
             {
                 _logger.Warn(
-                    $"Bypassing the second factor for user '{_context.User.Identity.Name}' due to an API error '{ex}'. {Environment.NewLine}" +
+                    $"Bypassing the second factor for user '{identity.RawName}' due to an API error '{ex}'. {Environment.NewLine}" +
                     $"Bypass session duration: {Configuration.Current.ApiLifeCheckInterval.TotalMinutes} min");
                 _context.GetCacheAdapter()
-                    .SetApiUnreachable(Util.CanonicalizeUserName(_context.User.Identity.Name), true);
+                    .SetApiUnreachable(identity.RawName, true);
                 _context.Response.Redirect(appRootPath, true);
             }
             catch (Exception ex)

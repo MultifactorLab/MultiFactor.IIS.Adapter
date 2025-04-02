@@ -6,13 +6,26 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
 {
     internal class LdapProfile : ILdapProfile
     {
+        private readonly LdapIdentity _identity;
         private readonly string _twoFaIdentityAttrName;
         private readonly string[] _phoneAttrs;
 
         private readonly Dictionary<string, HashSet<string>> _attrs = new Dictionary<string, HashSet<string>>(new AttributeKeyComparer());
 
-        public string SamAccountName => GetAttr("sAMAccountName").First();
-        public string TwoFAIdentity => GetAttr(_twoFaIdentityAttrName).FirstOrDefault();
+        /// <summary>
+        /// Name we got from the authentication pipeline. Most often it is netbios
+        /// </summary>
+        public string RawUserName => _identity.RawName;
+
+        /// <summary>
+        /// Normalized name. Can be used to search in the AD and as 2fa identity by default.
+        /// </summary>
+        public string FriendlyUserName => _identity.Name;
+
+        /// <summary>
+        /// Use only if corresponding setting is specified in the config
+        /// </summary>
+        public string Custom2FAIdentity => GetAttr(_twoFaIdentityAttrName).FirstOrDefault();
 
         public string Phone
         {
@@ -30,22 +43,22 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
             }
         }
 
-        public LdapProfile(string samAccountName, Configuration configuration)
+        public LdapProfile(LdapIdentity identity, Configuration configuration)
         {
-            if (string.IsNullOrWhiteSpace(samAccountName))
+            if (identity == null)
             {
-                throw new ArgumentException($"'{nameof(samAccountName)}' cannot be null or whitespace.", nameof(samAccountName));
+                throw new ArgumentException($"'{nameof(identity)}' cannot be null.", nameof(identity));
             }
             
             if (configuration == null)
             {
                 throw new ArgumentNullException(nameof(configuration));
             }
-
-            _attrs["sAMAccountName"] = new HashSet<string>{ samAccountName };
+            _identity = identity;
+            _attrs[identity.TypeName] = new HashSet<string>{ identity.Name };
             _twoFaIdentityAttrName = configuration.HasTwoFaIdentityAttribute 
                 ? configuration.TwoFaIdentityAttribute 
-                : "sAMAccountName";
+                : identity.TypeName;
 
             var phoneAttrs = new List<string>
             {

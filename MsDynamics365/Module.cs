@@ -2,6 +2,7 @@
 using MultiFactor.IIS.Adapter.Extensions;
 using MultiFactor.IIS.Adapter.Owa;
 using MultiFactor.IIS.Adapter.Services;
+using MultiFactor.IIS.Adapter.Services.Ldap;
 using System;
 using System.Web;
 
@@ -49,9 +50,8 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
                 //not yet authenticated with login/pwd
                 return;
             }
-            var user = context.User.Identity.Name;
+            var user = LdapIdentity.Parse(context.User.Identity.Name);
 
-            var canonicalUserName = Util.CanonicalizeUserName(user);
 
             //process request or postback to/from MultiFactor
             if (path.Contains(Constants.MULTIFACTOR_PAGE))
@@ -65,8 +65,8 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             }
 
             var ad = new ActiveDirectoryService(context.GetCacheAdapter(), Logger.IIS);
-            var secondFactorRequired = new UserRequiredSecondFactor(ad);
-            if (!secondFactorRequired.Execute(canonicalUserName))
+            var secondFactorRequired = new UserRequiredSecondFactor(ad, Logger.IIS);
+            if (!secondFactorRequired.Execute(user))
             {
                 //bypass 2fa
                 return;
@@ -74,8 +74,8 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
 
             //mfa
             var valSrv = new TokenValidationService(Logger.IIS);
-            var checker = new AuthChecker(context, valSrv);
-            var isAuthenticatedByMultifactor = checker.IsAuthenticated(user);
+            var checker = new AuthChecker(context, valSrv, Logger.IIS);
+            var isAuthenticatedByMultifactor = checker.IsAuthenticated(user.RawName);
             if (isAuthenticatedByMultifactor || context.HasApiUnreachableFlag())
             {
                 return;

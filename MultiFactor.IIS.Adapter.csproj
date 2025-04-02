@@ -69,6 +69,10 @@
     <Compile Include="Configuration.cs" />
     <Compile Include="ConfigurationKeys.cs" />
     <Compile Include="Extensions\HttpContextBaseExtensions.cs" />
+    <Compile Include="Interop\NameTranslator.cs" />
+    <Compile Include="Interop\NativeMethods.cs" />
+    <Compile Include="Interop\SafeDsHandle.cs" />
+    <Compile Include="Interop\UserSearchContext.cs" />
     <Compile Include="MsDynamics365\Module.cs" />
     <Compile Include="Constants.cs" />
     <Compile Include="Core\HttpModuleBase.cs" />
@@ -77,6 +81,8 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Services\Ldap\LdapIdentity.cs" />
+    <Compile Include="Services\Ldap\NetbiosService.cs" />
     <Compile Include="Services\Ldap\Profile\AttributeKeyComparer.cs" />
     <Compile Include="Services\MfaApiRequestExecutor.cs" />
     <Compile Include="Services\MfaApiRequestExecutorFactory.cs" />
