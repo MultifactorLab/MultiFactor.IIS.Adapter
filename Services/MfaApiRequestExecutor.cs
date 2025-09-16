@@ -2,6 +2,7 @@
 using MultiFactor.IIS.Adapter.Services.Ldap;
 using System;
 using System.Web;
+using MultiFactor.IIS.Adapter.Properties;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
@@ -36,6 +37,11 @@ namespace MultiFactor.IIS.Adapter.Services
                     .SetApiUnreachable(identity.RawName, true);
                 _context.Response.Redirect(appRootPath, true);
             }
+            catch (Exception ex) when (UserNotRegistered(ex))
+            {
+                _logger.Warn($"User {identity.RawName} not registered.");
+                SendPage(_context, Resources.user_not_registered_html);
+            }
             catch (Exception ex)
             {
                 _logger.Error(ex.ToString());
@@ -46,6 +52,20 @@ namespace MultiFactor.IIS.Adapter.Services
         private static bool NeedToBypass(Exception ex)
         {
             return ex.Message?.StartsWith(Constants.API_UNREACHABLE_CODE) == true && Configuration.Current.BypassSecondFactorWhenApiUnreachable;
+        }
+        
+        private static bool UserNotRegistered(Exception ex)
+        {
+            return ex.Message?.StartsWith(Constants.API_NOT_REGISTERED_CODE) == true;
+        }
+        
+        private void SendPage(HttpContextBase context, string html)
+        {
+            context.Response.Clear();
+            context.Response.ClearContent();
+            context.Response.Write(html);
+            context.Response.Flush();
+            context.Response.End();
         }
     }
 }
