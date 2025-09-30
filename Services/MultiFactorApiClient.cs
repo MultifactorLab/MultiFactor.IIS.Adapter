@@ -116,7 +116,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 client.DefaultRequestHeaders.Add("Authorization", $"Basic {auth}");
                 client.DefaultRequestHeaders.Add("mf-trace-id", _getTraceId());
 
-                var response = await client.GetAsync("self-service/support-info");
+                var response = await client.GetAsync("iis/support-info");
                 response.EnsureSuccessStatusCode();
 
                 string responseBody = await response.Content.ReadAsStringAsync();
