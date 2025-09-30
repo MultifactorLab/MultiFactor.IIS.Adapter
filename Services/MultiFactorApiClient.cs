@@ -1,7 +1,10 @@
-﻿using System;
+﻿using MultiFactor.IIS.Adapter.Dto;
+using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Http;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
@@ -65,7 +68,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 }
 
                 var responseJson = Encoding.UTF8.GetString(responseData);
-                var response = Util.JsonDeserialize<MultiFactorWebResponse<MultiFactorAccessPage>>(responseJson);
+                var response = Util.JsonDeserialize<MultiFactorWebResponseDto<MultiFactorAccessPageDto>>(responseJson);
                 if (!response.Success)
                 {
                     _logger.Error($"Got unsuccessful response from API: {responseJson}");
@@ -97,19 +100,29 @@ namespace MultiFactor.IIS.Adapter.Services
                 throw new Exception($"{errmsg}", ex);
             }
         }
-    }
 
-    public class MultiFactorWebResponse<TModel>
-    {
-        public bool Success { get; set; }
+        public async Task<ScopeSupportInfoDto> GetScopeSupportInfoAsync()
+        {
+            var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
+            WebProxy proxy = !string.IsNullOrEmpty(Configuration.Current.ApiProxy) ? new WebProxy(Configuration.Current.ApiProxy) : null;
+            var httpClientHandler = new HttpClientHandler()
+            {
+                Proxy = proxy,
+                UseProxy = proxy != null
+            };
+            using (var client = new HttpClient(httpClientHandler))
+            {
+                client.BaseAddress = new Uri(Configuration.Current.ApiUrl);
+                client.DefaultRequestHeaders.Add("Authorization", $"Basic {auth}");
+                client.DefaultRequestHeaders.Add("mf-trace-id", _getTraceId());
 
-        public string Message { get; set; }
+                var response = await client.GetAsync("self-service/support-info");
+                response.EnsureSuccessStatusCode();
 
-        public TModel Model { get; set; }
-    }
-
-    public class MultiFactorAccessPage
-    {
-        public string Url { get; set; }
+                string responseBody = await response.Content.ReadAsStringAsync();
+                var responseDto = Util.JsonDeserialize<ScopeSupportInfoDto> (responseBody);
+                return responseDto;
+            }
+        }
     }
 }

@@ -169,55 +169,42 @@
         body {
             margin: 0;
             padding: 0;
-            background: #f2f2f2;
+            background: #ECF5FC;
+   font-family: Arial, Helvetica, sans-serif;
+   font-weight: bolder;
+   color: #142553;
         }
-        .column {
-          float: left;
-          height: 100vh;
+        .text-container {
+   place-self: anchor-center;
+   position: absolute;
+   border-radius: 15px;
+   background: #FFFFFF;
+   box-shadow: 0px 4px 18px #00000026;
+   padding: 32px;
+   width: 360px;
+   height: 520px;
         }
-        .left {
-            background-color: #0072C6;
-            width: 25%;
-            height: 100vh;
-            float: left;
-        }
-        .right {
-          width: 75%;
-          padding: 30px;
-        }
-        .signinbutton {
-            cursor: pointer;
-        }
-        .imgLnk {
-            vertical-align: middle;
-            line-height: 2;
-        }
-        .signInEnter {
-            font-size: 22px;
-            color: #0072C6;
-            font-family: 'wf_segoe-ui_normal', 'Segoe UI', 'Segoe WP', Tahoma, Arial, sans-serif;
-        }
-        .signinTxt {
-            padding: 3px 11px;
-        }
+  .support-details{
+   display: grid;
+   gap: 16px;
+   padding: 8px 0;
+  }
+  .link{
+   color: #6A9CD6;
+  }
     &lt;/style&gt;
 &lt;/head&gt;
 &lt;body&gt;
-    &lt;div class="column left"&gt;
-    &lt;/div&gt;
-    &lt;div class="column right"&gt;
-        &lt;p&gt;
-            Отказано в доступе, обратитесь к администратору.
-        &lt;/p&gt;
-
-            &lt;div class="signInEnter"&gt;
-                &lt;div class="signinbutton" role="button"&gt;
-                    &lt;img class="imgLnk" src="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABYAAAAWCAYAAADEtGw7AAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAAyBpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuMC1jMDYwIDYxLjEzNDc3NywgMjAxMC8wMi8xMi0xNzozMjowMCAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RSZWY9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZVJlZiMiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENTNSBXaW5kb3dzIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjU1NzZGNEQzOTYxOTExRTE4ODU2ODkyQUQxMTQ2QUJGIiB4bXBNTTpEb2N1bWVudElEPSJ4bXAuZGlkOjU1NzZGNEQ0OTYxOTExRTE4ODU2ODkyQUQxMTQ2QUJGIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6NTU3NkY0RDE5NjE5MTFFMTg4NTY4OTJBRDExNDZBQkYiIHN0UmVmOmRvY3VtZW50SUQ9InhtcC5kaWQ6NTU3NkY0RDI5NjE5MTFFMTg4NTY4OTJBRDExNDZBQkYiLz4gPC9yZGY6RGVzY3JpcHRpb24+IDwvcmRmOlJERj4gPC94OnhtcG1ldGE+IDw/eHBhY2tldCBlbmQ9InIiPz7MvF4iAAACF0lEQVR42qyVz0sCQRTHZ5cSuqQJURRUt66GEuQlugmF0Ukw+huCjaBT0SkhEvwL6iQEERRJndIuCoLU1VsFQkH04xR0se/D79C4qLtCDz47zO6b7755M2/GUk5ZdbEwSIEEmAQRvn8ADXADTptHC++dBlsdhIfAJtgBQdXbvkAG5PCDb/OD7XIcByVwQNFLsA5iYJDE+O6SPuJbsrYq490ilulKZwrUwB4oeES8DPZBFDyDOCJvmBEHwDlFC8yrl6hy+crYc0QeMIUdMM9IN8Cb8mmI8I1jatRwtLDkaZt+Mv0P1adB/INjxbYRddBmnsKczt/0s/F2lJrhT5vgHoTkvWVZWlyPF620zb2qPHOajT/iuQQ+uaeLWPiQyyvPNiHCs+zces45G5fimGORaPGI4XHHNjrAvSv22ibilJs+0tsSV2qEfb3oo7b6Xwuw/ZGIX7gzxpi/v+LRi9g+E4nymNFKStaMrxNsGxJxnZ1Fz3haokVDdImLqi3Kti7CZ+wkXQvVHq1TnqFoyBD9dP06zfZGzgpJwxPTseKzlM3iaOVtqyL1cMUTb9o2jj6xXWOFfRtERzhWLIOffeldkTVq/QQM9yE6zDH6rMmZh9APWOXNkGSxJHzoJuib5NhVfeCb+1g+yGpVubrX4IIlH3EVRYrfrulbNc/iXleTwxPPz9V0KKl0X02Wx2Wa9rhM890u018BBgDOvaD/8G2ecwAAAABJRU5ErkJggg==" alt=""&gt;
-                    &lt;a href="~/" class="signinTxt"&gt;ок&lt;/a&gt;
-                &lt;/div&gt;
-            &lt;/div&gt;
-
-    &lt;/div&gt;
+ &lt;div class="text-container"&gt;                    
+  &lt;img class="imgLnk" src="data:image/png;base64,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" alt=""&gt;
+        &lt;h2&gt;Access denied&lt;/h2&gt;
+  &lt;p&gt;If you think something is wrong, please contact the system administrator via the contacts below&lt;/p&gt;
+  &lt;div class="support-details"&gt;
+   &lt;strong&gt;{AdminName}&lt;/strong&gt;
+   &lt;strong&gt;&lt;a class="link" href="mailto:{Model.AdminEmail}"&gt;{AdminEmail}&lt;/a&gt;&lt;/strong&gt;
+   &lt;strong&gt;&lt;a class="link" href="tel:{Model.AdminPhone}"&gt;{AdminPhone}&lt;/a&gt;&lt;/strong&gt;
+  &lt;/div&gt;
+ &lt;/div&gt;
 &lt;/body&gt;
 &lt;/html&gt;</value>
   </data>

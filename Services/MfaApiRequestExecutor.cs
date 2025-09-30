@@ -1,8 +1,9 @@
 ﻿using MultiFactor.IIS.Adapter.Extensions;
+using MultiFactor.IIS.Adapter.Properties;
 using MultiFactor.IIS.Adapter.Services.Ldap;
 using System;
+using System.Threading.Tasks;
 using System.Web;
-using MultiFactor.IIS.Adapter.Properties;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
@@ -19,7 +20,7 @@ namespace MultiFactor.IIS.Adapter.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void Execute(string postbackUrl, string appRootPath)
+        public async Task Execute(string postbackUrl, string appRootPath)
         {
             var identity = LdapIdentity.Parse(_context.User.Identity.Name);
             try
@@ -40,13 +41,29 @@ namespace MultiFactor.IIS.Adapter.Services
             catch (Exception ex) when (UserNotRegistered(ex))
             {
                 _logger.Warn($"User {identity.RawName} not registered.");
-                SendPage(_context, Resources.user_not_registered_html);
+                var html = await GetInfoHtmlAsync(identity.RawName);
+                SendPage(_context, html);
             }
             catch (Exception ex)
             {
                 _logger.Error(ex.ToString());
                 throw;
             }
+        }
+
+        private async Task<string> GetInfoHtmlAsync(string name)
+        {
+            var adminInfo =_context.GetCacheAdapter().GetSupportAdmin(name);
+            if (adminInfo == null)
+            {
+                var infoDto = await _accessUrl.Info();
+                adminInfo = infoDto;
+                _context.GetCacheAdapter().SetSupportAdmin(name, infoDto);
+            }
+            return Resources.user_not_registered_html
+                .Replace("{AdminName}", adminInfo.AdminName)
+                .Replace("{AdminEmail}", adminInfo.AdminEmail)
+                .Replace("{AdminPhone}", adminInfo.AdminPhone);
         }
 
         private static bool NeedToBypass(Exception ex)
