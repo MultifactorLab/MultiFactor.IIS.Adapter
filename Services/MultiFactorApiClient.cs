@@ -1,10 +1,12 @@
 ﻿using MultiFactor.IIS.Adapter.Dto;
+using MultiFactor.IIS.Adapter.Properties;
 using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
+using System.Web;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
@@ -103,25 +105,41 @@ namespace MultiFactor.IIS.Adapter.Services
 
         public async Task<ScopeSupportInfoDto> GetScopeSupportInfoAsync()
         {
-            var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
-            WebProxy proxy = !string.IsNullOrEmpty(Configuration.Current.ApiProxy) ? new WebProxy(Configuration.Current.ApiProxy) : null;
-            var httpClientHandler = new HttpClientHandler()
+            try
             {
-                Proxy = proxy,
-                UseProxy = proxy != null
-            };
-            using (var client = new HttpClient(httpClientHandler))
+                var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
+                WebProxy proxy = !string.IsNullOrEmpty(Configuration.Current.ApiProxy) ? new WebProxy(Configuration.Current.ApiProxy) : null;
+                var httpClientHandler = new HttpClientHandler()
+                {
+                    Proxy = proxy,
+                    UseProxy = proxy != null
+                };
+                using (var client = new HttpClient(httpClientHandler))
+                {
+                    client.BaseAddress = new Uri(Configuration.Current.ApiUrl);
+                    client.DefaultRequestHeaders.Add("Authorization", $"Basic {auth}");
+                    client.DefaultRequestHeaders.Add("mf-trace-id", _getTraceId());
+
+                    var response = await client.GetAsync("iis/support-info");
+                    if (response.StatusCode != HttpStatusCode.OK)
+                    {
+                        var errContent = await response.Content.ReadAsStringAsync();
+                        _logger.Error(errContent);
+                        return new ScopeSupportInfoDto();
+                    }
+                    response.EnsureSuccessStatusCode();
+
+                    string responseBody = await response.Content.ReadAsStringAsync();
+                    var responseDto = Util.JsonDeserialize<ScopeSupportInfoDto>(responseBody);
+                    return responseDto;
+                }
+            }
+            catch (Exception ex)
             {
-                client.BaseAddress = new Uri(Configuration.Current.ApiUrl);
-                client.DefaultRequestHeaders.Add("Authorization", $"Basic {auth}");
-                client.DefaultRequestHeaders.Add("mf-trace-id", _getTraceId());
+                string errmsg = "Something went wrong";
+                _logger.Error(ex.Message);
 
-                var response = await client.GetAsync("iis/support-info");
-                response.EnsureSuccessStatusCode();
-
-                string responseBody = await response.Content.ReadAsStringAsync();
-                var responseDto = Util.JsonDeserialize<ScopeSupportInfoDto> (responseBody);
-                return responseDto;
+                throw new Exception($"{errmsg}", ex);
             }
         }
     }

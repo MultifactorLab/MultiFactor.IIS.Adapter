@@ -54,11 +54,12 @@ namespace MultiFactor.IIS.Adapter.Services
         private async Task<string> GetInfoHtmlAsync(string name)
         {
             var adminInfo =_context.GetCacheAdapter().GetSupportAdmin(name);
-            if (adminInfo == null)
+            if (adminInfo == null || adminInfo.IsEmpty())
             {
                 var infoDto = await _accessUrl.Info();
+                if(!infoDto.IsEmpty())
+                    _context.GetCacheAdapter().SetSupportAdmin(name, infoDto);
                 adminInfo = infoDto;
-                _context.GetCacheAdapter().SetSupportAdmin(name, infoDto);
             }
             return Resources.user_not_registered_html
                 .Replace("{AdminName}", adminInfo.AdminName)
