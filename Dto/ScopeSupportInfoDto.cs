@@ -11,8 +11,8 @@ namespace MultiFactor.IIS.Adapter.Dto
         public bool IsEmpty()
         {
             return string.IsNullOrWhiteSpace(AdminName) 
-                && string.IsNullOrWhiteSpace(AdminEmail) 
-                && string.IsNullOrWhiteSpace(AdminPhone);
+                && (string.IsNullOrWhiteSpace(AdminEmail) 
+                || string.IsNullOrWhiteSpace(AdminPhone));
         }
     }
 }

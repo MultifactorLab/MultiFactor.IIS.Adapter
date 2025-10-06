@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
+using System.Security.Principal;
 using System.Text;
 using System.Threading.Tasks;
 using System.Web;
@@ -107,6 +108,7 @@ namespace MultiFactor.IIS.Adapter.Services
         {
             try
             {
+                _logger.Info($"Request admin info");
                 var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
                 WebProxy proxy = !string.IsNullOrEmpty(Configuration.Current.ApiProxy) ? new WebProxy(Configuration.Current.ApiProxy) : null;
                 var httpClientHandler = new HttpClientHandler()
@@ -130,7 +132,7 @@ namespace MultiFactor.IIS.Adapter.Services
                     response.EnsureSuccessStatusCode();
 
                     string responseBody = await response.Content.ReadAsStringAsync();
-                    var responseDto = Util.JsonDeserialize<ScopeSupportInfoDto>(responseBody);
+                    var responseDto = Util.JsonDeserialize<MultiFactorWebResponseDto<ScopeSupportInfoDto>>(responseBody);
                     return responseDto;
                 }
             }

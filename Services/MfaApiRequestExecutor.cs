@@ -56,6 +56,7 @@ namespace MultiFactor.IIS.Adapter.Services
             var adminInfo =_context.GetCacheAdapter().GetSupportAdmin(name);
             if (adminInfo == null || adminInfo.IsEmpty())
             {
+                _logger.Info("Cached admin value is empty");
                 var infoDto = await _accessUrl.Info();
                 if(!infoDto.IsEmpty())
                     _context.GetCacheAdapter().SetSupportAdmin(name, infoDto);
