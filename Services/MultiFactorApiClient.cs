@@ -108,40 +108,31 @@ namespace MultiFactor.IIS.Adapter.Services
         {
             try
             {
-                _logger.Info($"Request admin info");
                 var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
-                WebProxy proxy = !string.IsNullOrEmpty(Configuration.Current.ApiProxy) ? new WebProxy(Configuration.Current.ApiProxy) : null;
-                var httpClientHandler = new HttpClientHandler()
-                {
-                    Proxy = proxy,
-                    UseProxy = proxy != null
-                };
-                using (var client = new HttpClient(httpClientHandler))
-                {
-                    client.BaseAddress = new Uri(Configuration.Current.ApiUrl);
-                    client.DefaultRequestHeaders.Add("Authorization", $"Basic {auth}");
-                    client.DefaultRequestHeaders.Add("mf-trace-id", _getTraceId());
+                string responseData = null;
 
-                    var response = await client.GetAsync("iis/support-info");
-                    if (response.StatusCode != HttpStatusCode.OK)
+                using (var web = new WebClient())
+                {
+                    web.Headers.Add("Content-Type", "application/json");
+                    web.Headers.Add("Authorization", $"Basic {auth}");
+                    web.Headers.Add("mf-trace-id", _getTraceId());
+
+                    if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
                     {
-                        var errContent = await response.Content.ReadAsStringAsync();
-                        _logger.Error(errContent);
-                        return new ScopeSupportInfoDto();
+                        web.Proxy = new WebProxy(Configuration.Current.ApiProxy);
                     }
-                    response.EnsureSuccessStatusCode();
 
-                    string responseBody = await response.Content.ReadAsStringAsync();
-                    var responseDto = Util.JsonDeserialize<MultiFactorWebResponseDto<ScopeSupportInfoDto>>(responseBody);
-                    return responseDto;
+                    responseData = web.DownloadString($"{Configuration.Current.ApiUrl}/iis/support-info");
                 }
+
+                var responseDto = Util.JsonDeserialize<MultiFactorWebResponseDto<ScopeSupportInfoDto>>(responseData);
+                return responseDto?.Model;
             }
             catch (Exception ex)
             {
-                string errmsg = "Something went wrong";
                 _logger.Error(ex.Message);
 
-                throw new Exception($"{errmsg}", ex);
+                throw new Exception($"{ex.Message}", ex);
             }
         }
     }

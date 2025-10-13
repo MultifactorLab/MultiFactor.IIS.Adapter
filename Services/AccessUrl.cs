@@ -1,6 +1,7 @@
 ﻿using MultiFactor.IIS.Adapter.Dto;
 using MultiFactor.IIS.Adapter.Services.Ldap;
 using System;
+using System.Security.Principal;
 using System.Threading.Tasks;
 
 namespace MultiFactor.IIS.Adapter.Services
@@ -38,10 +39,18 @@ namespace MultiFactor.IIS.Adapter.Services
             var multiFactorAccessUrl = _api.CreateRequest(twoFAIdentity, identity.RawName, postbackUrl, profile?.Phone);
             return multiFactorAccessUrl;
         }
+
         public async Task<ScopeSupportInfoDto> Info()
         {
-            var multiFactorAccessUrl = _api.GetScopeSupportInfoAsync();
-            return await multiFactorAccessUrl;
+            try
+            {
+                return await _api.GetScopeSupportInfoAsync();
+            }
+            catch (Exception ex)
+            {
+                Logger.API.Info($"Error while catching adminInfo:{ex.Message}");
+                return new ScopeSupportInfoDto();
+            }
         }
     }
 }

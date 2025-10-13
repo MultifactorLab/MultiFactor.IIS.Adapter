@@ -58,8 +58,11 @@ namespace MultiFactor.IIS.Adapter.Services
             {
                 _logger.Info("Cached admin value is empty");
                 var infoDto = await _accessUrl.Info();
-                if(!infoDto.IsEmpty())
+                if (!infoDto.IsEmpty())
+                {
+                    _logger.Info("Admin value is empty");
                     _context.GetCacheAdapter().SetSupportAdmin(name, infoDto);
+                }
                 adminInfo = infoDto;
             }
             return Resources.user_not_registered_html
