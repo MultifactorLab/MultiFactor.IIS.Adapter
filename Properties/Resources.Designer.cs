@@ -128,5 +128,33 @@ namespace MultiFactor.IIS.Adapter.Properties {
                 return ResourceManager.GetString("user_not_registered.html", resourceCulture);
             }
         }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to &lt;!DOCTYPE html&gt;
+        ///&lt;html&gt;
+        ///&lt;head&gt;
+        ///    &lt;meta name=&quot;viewport&quot; content=&quot;width=device-width, initial-scale=1&quot;&gt;
+        ///    &lt;title&gt;Двухфакторная аутентификация&lt;/title&gt;
+        ///    &lt;style&gt;
+        ///        * {
+        ///            box-sizing: border-box;
+        ///        }
+        ///        body {
+        ///            margin: 0;
+        ///            padding: 0;
+        ///            background: #ECF5FC;
+        ///   font-family: Arial, Helvetica, sans-serif;
+        ///   font-weight: bolder;
+        ///   color: #142553;
+        ///        }
+        ///        .text-container {
+        ///   place-self: anchor-center;
+        ///   position: absolute; [rest of string was truncated]&quot;;.
+        /// </summary>
+        internal static string user_not_registered_ru_html {
+            get {
+                return ResourceManager.GetString("user_not_registered_ru.html", resourceCulture);
+            }
+        }
     }
 }

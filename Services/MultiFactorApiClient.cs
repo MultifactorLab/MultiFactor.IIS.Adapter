@@ -51,7 +51,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 var requestData = Encoding.UTF8.GetBytes(payload);
                 byte[] responseData = null;
 
-                //basic authorization
+                //basic authorization 
                 var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
 
                 _logger.Info($"Create mfa request to api for {identity}");
@@ -104,7 +104,7 @@ namespace MultiFactor.IIS.Adapter.Services
             }
         }
 
-        public async Task<ScopeSupportInfoDto> GetScopeSupportInfoAsync()
+        public ScopeSupportInfoDto GetScopeSupportInfo()
         {
             try
             {

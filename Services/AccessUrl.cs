@@ -44,7 +44,7 @@ namespace MultiFactor.IIS.Adapter.Services
         {
             try
             {
-                return await _api.GetScopeSupportInfoAsync();
+                return _api.GetScopeSupportInfo();
             }
             catch (Exception ex)
             {

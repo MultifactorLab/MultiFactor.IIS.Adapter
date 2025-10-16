@@ -65,7 +65,8 @@ namespace MultiFactor.IIS.Adapter.Services
                 }
                 adminInfo = infoDto;
             }
-            return Resources.user_not_registered_html
+            var resource = GetBrowserLanguage() == "ru" ? Resources.user_not_registered_ru_html : Resources.user_not_registered_html;
+            return resource
                 .Replace("{AdminName}", adminInfo.AdminName)
                 .Replace("{AdminEmail}", adminInfo.AdminEmail)
                 .Replace("{AdminPhone}", adminInfo.AdminPhone);
@@ -88,6 +89,21 @@ namespace MultiFactor.IIS.Adapter.Services
             context.Response.Write(html);
             context.Response.Flush();
             context.Response.End();
+        }
+        private string GetBrowserLanguage()
+        {
+            var httpContext = HttpContext.Current;
+            if (httpContext?.Request?.UserLanguages != null && httpContext.Request.UserLanguages.Length > 0)
+            {
+                var browserLanguage = httpContext.Request.UserLanguages[0];
+
+                if (browserLanguage.Contains(";"))
+                    browserLanguage = browserLanguage.Split(';')[0];
+
+                return browserLanguage;
+            }
+
+            return "en";
         }
     }
 }
