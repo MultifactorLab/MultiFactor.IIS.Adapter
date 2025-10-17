@@ -1,4 +1,5 @@
-﻿using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
+﻿using MultiFactor.IIS.Adapter.Dto;
+using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
 using System;
 using System.Web;
 using System.Web.Caching;
@@ -13,6 +14,8 @@ namespace MultiFactor.IIS.Adapter.Services
         const string DN_KEY = "dn";
         const string PROFILE_KEY = "profile";
         const string API_UNREACHABLE = "api-unreachable";
+        const string SUPPORT = "support";
+        const string ADMIN = "admin";
 
         private readonly HttpContextBase _context;
 
@@ -124,6 +127,28 @@ namespace MultiFactor.IIS.Adapter.Services
 
             var key = $"{KEY_PREFIX}:{API_UNREACHABLE}:{samAccountName}";
             SetItem(key, bypass, Configuration.Current.ApiLifeCheckInterval);
+        }
+
+        public ScopeSupportInfoDto GetSupportAdmin(string samAccountName)
+        {
+            if (string.IsNullOrWhiteSpace(samAccountName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
+            }
+
+            var key = $"{SUPPORT}:{ADMIN}:{samAccountName}";
+            return GetItem<ScopeSupportInfoDto>(key);
+        }
+
+        public void SetSupportAdmin(string samAccountName, ScopeSupportInfoDto admin)
+        {
+            if (string.IsNullOrWhiteSpace(samAccountName))
+            {
+                throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
+            }
+
+            var key = $"{SUPPORT}:{ADMIN}:{samAccountName}";
+            SetItem(key, admin, Configuration.Current.ApiLifeCheckInterval);
         }
 
         private string GetItem(string key)

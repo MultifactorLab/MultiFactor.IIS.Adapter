@@ -1,6 +1,8 @@
 ﻿using MultiFactor.IIS.Adapter.Extensions;
+using MultiFactor.IIS.Adapter.Properties;
 using MultiFactor.IIS.Adapter.Services.Ldap;
 using System;
+using System.Threading.Tasks;
 using System.Web;
 
 namespace MultiFactor.IIS.Adapter.Services
@@ -18,7 +20,7 @@ namespace MultiFactor.IIS.Adapter.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public void Execute(string postbackUrl, string appRootPath)
+        public async Task Execute(string postbackUrl, string appRootPath)
         {
             var identity = LdapIdentity.Parse(_context.User.Identity.Name);
             try
@@ -36,6 +38,12 @@ namespace MultiFactor.IIS.Adapter.Services
                     .SetApiUnreachable(identity.RawName, true);
                 _context.Response.Redirect(appRootPath, true);
             }
+            catch (Exception ex) when (UserNotRegistered(ex))
+            {
+                _logger.Warn($"User {identity.RawName} not registered.");
+                var html = await GetInfoHtmlAsync(identity.RawName);
+                SendPage(_context, html);
+            }
             catch (Exception ex)
             {
                 _logger.Error(ex.ToString());
@@ -43,9 +51,59 @@ namespace MultiFactor.IIS.Adapter.Services
             }
         }
 
+        private async Task<string> GetInfoHtmlAsync(string name)
+        {
+            var adminInfo =_context.GetCacheAdapter().GetSupportAdmin(name);
+            if (adminInfo == null || adminInfo.IsEmpty())
+            {
+                _logger.Info("Cached admin value is empty");
+                var infoDto = await _accessUrl.Info();
+                if (!infoDto.IsEmpty())
+                {
+                    _logger.Info("Admin value is empty");
+                    _context.GetCacheAdapter().SetSupportAdmin(name, infoDto);
+                }
+                adminInfo = infoDto;
+            }
+            var resource = GetBrowserLanguage() == "ru" ? Resources.user_not_registered_ru_html : Resources.user_not_registered_html;
+            return resource
+                .Replace("{AdminName}", adminInfo.AdminName)
+                .Replace("{AdminEmail}", adminInfo.AdminEmail)
+                .Replace("{AdminPhone}", adminInfo.AdminPhone);
+        }
+
         private static bool NeedToBypass(Exception ex)
         {
             return ex.Message?.StartsWith(Constants.API_UNREACHABLE_CODE) == true && Configuration.Current.BypassSecondFactorWhenApiUnreachable;
+        }
+        
+        private static bool UserNotRegistered(Exception ex)
+        {
+            return ex.Message?.StartsWith(Constants.API_NOT_REGISTERED_CODE) == true;
+        }
+        
+        private void SendPage(HttpContextBase context, string html)
+        {
+            context.Response.Clear();
+            context.Response.ClearContent();
+            context.Response.Write(html);
+            context.Response.Flush();
+            context.Response.End();
+        }
+        private string GetBrowserLanguage()
+        {
+            var httpContext = HttpContext.Current;
+            if (httpContext?.Request?.UserLanguages != null && httpContext.Request.UserLanguages.Length > 0)
+            {
+                var browserLanguage = httpContext.Request.UserLanguages[0];
+
+                if (browserLanguage.Contains(";"))
+                    browserLanguage = browserLanguage.Split(';')[0];
+
+                return browserLanguage;
+            }
+
+            return "en";
         }
     }
 }

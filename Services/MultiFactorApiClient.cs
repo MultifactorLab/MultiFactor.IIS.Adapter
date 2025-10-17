@@ -1,7 +1,13 @@
-﻿using System;
+﻿using MultiFactor.IIS.Adapter.Dto;
+using MultiFactor.IIS.Adapter.Properties;
+using System;
 using System.Collections.Generic;
 using System.Net;
+using System.Net.Http;
+using System.Security.Principal;
 using System.Text;
+using System.Threading.Tasks;
+using System.Web;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
@@ -45,7 +51,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 var requestData = Encoding.UTF8.GetBytes(payload);
                 byte[] responseData = null;
 
-                //basic authorization
+                //basic authorization 
                 var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
 
                 _logger.Info($"Create mfa request to api for {identity}");
@@ -65,7 +71,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 }
 
                 var responseJson = Encoding.UTF8.GetString(responseData);
-                var response = Util.JsonDeserialize<MultiFactorWebResponse<MultiFactorAccessPage>>(responseJson);
+                var response = Util.JsonDeserialize<MultiFactorWebResponseDto<MultiFactorAccessPageDto>>(responseJson);
                 if (!response.Success)
                 {
                     _logger.Error($"Got unsuccessful response from API: {responseJson}");
@@ -97,19 +103,37 @@ namespace MultiFactor.IIS.Adapter.Services
                 throw new Exception($"{errmsg}", ex);
             }
         }
-    }
 
-    public class MultiFactorWebResponse<TModel>
-    {
-        public bool Success { get; set; }
+        public ScopeSupportInfoDto GetScopeSupportInfo()
+        {
+            try
+            {
+                var auth = Convert.ToBase64String(Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
+                string responseData = null;
 
-        public string Message { get; set; }
+                using (var web = new WebClient())
+                {
+                    web.Headers.Add("Content-Type", "application/json");
+                    web.Headers.Add("Authorization", $"Basic {auth}");
+                    web.Headers.Add("mf-trace-id", _getTraceId());
 
-        public TModel Model { get; set; }
-    }
+                    if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
+                    {
+                        web.Proxy = new WebProxy(Configuration.Current.ApiProxy);
+                    }
 
-    public class MultiFactorAccessPage
-    {
-        public string Url { get; set; }
+                    responseData = web.DownloadString($"{Configuration.Current.ApiUrl}/iis/support-info");
+                }
+
+                var responseDto = Util.JsonDeserialize<MultiFactorWebResponseDto<ScopeSupportInfoDto>>(responseData);
+                return responseDto?.Model;
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex.Message);
+
+                throw new Exception($"{ex.Message}", ex);
+            }
+        }
     }
 }
