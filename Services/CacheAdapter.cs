@@ -120,13 +120,18 @@ namespace MultiFactor.IIS.Adapter.Services
 
         public void SetApiUnreachable(string samAccountName, bool bypass)
         {
+            SetApiUnreachable(samAccountName, bypass, Configuration.Current.ApiLifeCheckInterval);
+        }
+
+        internal void SetApiUnreachable(string samAccountName, bool bypass, TimeSpan ttl)
+        {
             if (string.IsNullOrWhiteSpace(samAccountName))
             {
                 throw new ArgumentException("Value cannot be null or whitespace.", nameof(samAccountName));
             }
 
             var key = $"{KEY_PREFIX}:{API_UNREACHABLE}:{samAccountName}";
-            SetItem(key, bypass, Configuration.Current.ApiLifeCheckInterval);
+            SetItem(key, bypass, ttl);
         }
 
         public ScopeSupportInfoDto GetSupportAdmin(string samAccountName)

@@ -103,5 +103,28 @@ namespace MultiFactor.IIS.Adapter
 
             return identity;
         }
+
+        public static string GetUserDomain(string userName)
+        {
+            if (string.IsNullOrEmpty(userName) || !userName.Contains("\\") && !userName.Contains("@"))
+            {
+                return null;
+            }
+
+            string domain = userName;
+            int length = domain.IndexOf("\\");
+            if (length > 0)
+            {
+                domain = domain.Substring(0, length);
+            }
+
+            int num = domain.IndexOf("@");
+            if (num > 0)
+            {
+                domain = domain.Substring(num + 1);
+            }
+
+            return domain.ToLower();
+        }
     }
 }

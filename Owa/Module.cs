@@ -74,17 +74,6 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            //process request or postback to/from MultiFactor
-            if (path.Contains(Constants.MULTIFACTOR_PAGE))
-            {
-                if (context.Request.HttpMethod == "POST")
-                {
-                    ProcessMultifactorRequest(context);
-                }
-
-                return;
-            }
-
             var ad = new ActiveDirectoryService(context.GetCacheAdapter(), Logger.Owa);
             var secondFactorRequired = new UserRequiredSecondFactor(ad, Logger.Owa);
             if (!secondFactorRequired.Execute(user))
@@ -111,43 +100,19 @@ namespace MultiFactor.IIS.Adapter.Owa
                 return;
             }
 
-            //redirect to mfa
-            var redirectUrl = $"{context.Request.ApplicationPath}/{Constants.MULTIFACTOR_PAGE}";
-            context.Response.Redirect(redirectUrl);
+            //multifactor posts the access token back to this url and the user returns here after the second factor
+            var callbackUrl = PublicUrlResolver.ResolveOwa(context);
+            var executor = MfaApiRequestExecutorFactory.CreateOwa(context);
+            executor.Execute(callbackUrl);
         }
 
-        private void SendPage(HttpContextBase context, string html)
+        private static void SendPage(HttpContextBase context, string html)
         {
             context.Response.Clear();
             context.Response.ClearContent();
             context.Response.Write(html);
             context.Response.Flush();
             context.Response.End();
-        }
-
-        private void ProcessMultifactorRequest(HttpContextBase context)
-        {
-            //check if user session timed-out
-            if (!context.User.Identity.IsAuthenticated)
-            {
-                context.Response.Redirect(context.Request.ApplicationPath);
-                return;
-            }
-
-            var url = context.Request.Form["url"];
-            if (url == null)
-            {
-                return;
-            }
-
-            //mfa request
-            if (url.IndexOf("#") == -1)
-            {
-                url += "#path=/mail";
-            }
-
-            var executor = MfaApiRequestExecutorFactory.CreateOwa(context);
-            executor.Execute(url, context.Request.ApplicationPath);
         }
 
         public string TryGetUpnFromSid(IIdentity identity)

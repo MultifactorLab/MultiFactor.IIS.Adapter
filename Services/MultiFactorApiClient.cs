@@ -25,7 +25,7 @@ namespace MultiFactor.IIS.Adapter.Services
             _getTraceId = getTraceId ?? throw new ArgumentNullException(nameof(getTraceId));
         }
 
-        public string CreateRequest(string identity, string rawUserName, string postbackUrl, string userPhone)
+        public string CreateRequest(string identity, string rawUserName, string postbackUrl, string name, string email, string phone)
         {
             try
             {
@@ -36,7 +36,9 @@ namespace MultiFactor.IIS.Adapter.Services
                 var payload = Util.JsonSerialize(new
                 {
                     Identity = identity,
-                    userPhone,
+                    name,
+                    email,
+                    phone,
                     Callback = new
                     {
                         Action = postbackUrl,
@@ -62,10 +64,7 @@ namespace MultiFactor.IIS.Adapter.Services
                     web.Headers.Add("Authorization", $"Basic {auth}");
                     web.Headers.Add("mf-trace-id", _getTraceId());
 
-                    if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
-                    {
-                        web.Proxy = new WebProxy(Configuration.Current.ApiProxy);
-                    }
+                    TryApplyProxy(web, Configuration.Current.ApiProxy);
 
                     responseData = web.UploadData($"{Configuration.Current.ApiUrl}/access/requests", "POST", requestData);
                 }
@@ -104,6 +103,64 @@ namespace MultiFactor.IIS.Adapter.Services
             }
         }
 
+        public MultiFactorAccessRequest CreateNonInteractiveAccessRequest(
+            string methodPath,
+            string identity,
+            string email,
+            string phone)
+        {
+            ServicePointManager.SecurityProtocol = SecurityProtocolType.Tls12;
+
+            var url = $"{Configuration.Current.ApiUrl}{methodPath}";
+            var payload = new
+            {
+                Identity = identity,
+                Phone = phone,
+                Email = email
+            };
+
+            var str = Util.JsonSerialize(payload);
+            var requestData = Encoding.UTF8.GetBytes(str);
+            var auth = Convert.ToBase64String(
+                Encoding.ASCII.GetBytes($"{Configuration.Current.ApiKey}:{Configuration.Current.ApiSecret}"));
+            byte[] responseData = null;
+
+            using (var web = new WebClient())
+            {
+                web.Headers.Add("Content-Type", "application/json");
+                web.Headers.Add("Authorization", $"Basic {auth}");
+                web.Headers.Add("mf-trace-id", _getTraceId());
+
+                TryApplyProxy(web, Configuration.Current.ApiProxy);
+
+                responseData = web.UploadData(url, "POST", requestData);
+            }
+
+            var responseJson = Encoding.UTF8.GetString(responseData);
+
+            var response = Util.JsonDeserialize<MultiFactorWebResponseDto<MultiFactorAccessRequest>>(responseJson);
+
+            if (!response.Success)
+            {
+                throw new Exception($"Got unsuccessful response from API: {responseJson}");
+            }
+
+            return response.Model;
+        }
+
+        internal static void TryApplyProxy(WebClient webClient, string proxyUrl)
+        {
+            if (webClient == null)
+            {
+                throw new ArgumentNullException(nameof(webClient));
+            }
+
+            if (!string.IsNullOrWhiteSpace(proxyUrl))
+            {
+                webClient.Proxy = new WebProxy(proxyUrl);
+            }
+        }
+
         public ScopeSupportInfoDto GetScopeSupportInfo()
         {
             try
@@ -117,10 +174,7 @@ namespace MultiFactor.IIS.Adapter.Services
                     web.Headers.Add("Authorization", $"Basic {auth}");
                     web.Headers.Add("mf-trace-id", _getTraceId());
 
-                    if (!string.IsNullOrEmpty(Configuration.Current.ApiProxy))
-                    {
-                        web.Proxy = new WebProxy(Configuration.Current.ApiProxy);
-                    }
+                    TryApplyProxy(web, Configuration.Current.ApiProxy);
 
                     responseData = web.DownloadString($"{Configuration.Current.ApiUrl}/iis/support-info");
                 }
@@ -135,5 +189,24 @@ namespace MultiFactor.IIS.Adapter.Services
                 throw new Exception($"{ex.Message}", ex);
             }
         }
+    }
+
+    public class MultiFactorAccessRequest
+    {
+        public string Id { get; set; }
+        public string Identity { get; set; }
+        public AccessRequestStatus Status { get; set; }
+        public string Message { get; set; }
+    }
+
+    /// <summary>
+    /// Status of the MultiFactor access request.
+    /// </summary>
+    public enum AccessRequestStatus
+    {
+        Unknown = 0,
+        Granted,
+        Denied,
+        Bypassed
     }
 }

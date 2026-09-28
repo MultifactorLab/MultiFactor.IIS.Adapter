@@ -34,6 +34,7 @@
   <ItemGroup>
     <Reference Include="System" />
     <Reference Include="System.Core" />
+    <Reference Include="System.Runtime.Caching" />
     <Reference Include="System.Web" />
     <Reference Include="System.Xml.Linq" />
     <Reference Include="System.Data.DataSetExtensions" />
@@ -51,10 +52,17 @@
     <PackageReference Include="coverlet.collector" Version="1.0.1" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="ActiveSyncModuleTests.cs" />
     <Compile Include="ConfigurationTests.cs" />
     <Compile Include="HttpContextMockBuilder.cs" />
+    <Compile Include="LdapFilterTests.cs" />
+    <Compile Include="MultiFactorApiClientTests.cs" />
+    <Compile Include="NewFunctionalityTests.cs" />
+    <Compile Include="PersonalDataTests.cs" />
     <Compile Include="OwaModuleTests.cs" />
+    <Compile Include="PrivacyModeDescriptorTests.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="PublicUrlResolverTests.cs" />
     <Compile Include="TestableConfiguration.cs" />
   </ItemGroup>
   <ItemGroup>

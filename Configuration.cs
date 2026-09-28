@@ -1,4 +1,5 @@
-﻿using MultiFactor.IIS.Adapter.Services;
+﻿using MultiFactor.IIS.Adapter.Core;
+using MultiFactor.IIS.Adapter.Services;
 using System;
 using System.Collections.Specialized;
 using System.Configuration;
@@ -13,15 +14,18 @@ namespace MultiFactor.IIS.Adapter
             (_activeDirectoryDomain ?? string.Empty).Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries)
             .Distinct()
             .ToArray();
-        
+
         public string ApiUrl { get; }
         public string ApiKey { get; }
         public string ApiSecret { get; }
         public string ApiProxy { get; }
-        
+        public PrivacyModeDescriptor PrivacyMode { get; private set; } = PrivacyModeDescriptor.Default;
+        public string PublicUrl { get; internal set; }
+
         public bool BypassSecondFactorWhenApiUnreachable { get; private set; }
 
         public string ActiveDirectory2FaGroup { get; private set; }
+        public string[] ActiveDirectory2FaGroups => ActiveDirectory2FaGroup?.Split(';') ?? Array.Empty<string>();
         public TimeSpan ActiveDirectoryCacheTimout { get; private set; }
         public TimeSpan ApiLifeCheckInterval { get; private set; }
 
@@ -29,8 +33,9 @@ namespace MultiFactor.IIS.Adapter
         public bool HasTwoFaIdentityAttribute => !string.IsNullOrWhiteSpace(TwoFaIdentityAttribute);
         public string TwoFaIdentityAttribute { get; private set; }
         public string[] PhoneAttributes { get; private set; } = new string[0];
-        
-        
+        public int SessionLifeTimeInHours { get; private set; }
+        public int ReRequestDelayInMinutes { get; private set; }
+
         private static readonly Lazy<Configuration> _current = new Lazy<Configuration>(Load);
         public static Configuration Current => _current.Value;
         
@@ -47,7 +52,15 @@ namespace MultiFactor.IIS.Adapter
 
         protected static Configuration Load()
         {
-            var appSettings = ConfigurationManager.AppSettings;
+            return Load(ConfigurationManager.AppSettings);
+        }
+
+        protected static Configuration Load(NameValueCollection appSettings)
+        {
+            if (appSettings == null)
+            {
+                throw new ArgumentNullException(nameof(appSettings));
+            }   
 
             var apiUrlSetting = appSettings[ConfigurationKeys.ApiUrl];
             var apiKeySetting = appSettings[ConfigurationKeys.ApiKey];
@@ -56,6 +69,8 @@ namespace MultiFactor.IIS.Adapter
 
             var activeDirectory2FaGroupSetting = appSettings[ConfigurationKeys.ActiveDirectory2FAGroup];
             var activeDirectoryDomain = appSettings[ConfigurationKeys.ActiveDirectoryDomain];
+            var sessionLifeTime = appSettings[ConfigurationKeys.SessionLifeTimeInHours];
+            var reRequestDelay = appSettings[ConfigurationKeys.SecondFactorReRequestDelayInMinutes];
 
             var domain = GetDomain(activeDirectoryDomain);
 
@@ -82,10 +97,37 @@ namespace MultiFactor.IIS.Adapter
             ReadTwoFaIdentityAttributeSetting(appSettings, config);
             ReadActiveDirectoryCacheTimoutSetting(appSettings, config);
             ReadPhoneAttributeSetting(appSettings, config);
+            ReadPrivacyModeSetting(appSettings, config);
             ReadBypassWhenApiUnreachableSetting(appSettings, config);
             ReadApiLifeCheckIntervalSetting(appSettings, config);
+            SetSessionLifeTime(sessionLifeTime, config);
+            SetReRequestDelay(reRequestDelay, config);
+            ReadPublicUrlSetting(appSettings, config);
 
             return config;
+        }
+
+        private static void ReadPrivacyModeSetting(NameValueCollection appSettings, Configuration configuration)
+        {
+            configuration.PrivacyMode = PrivacyModeDescriptor.Create(appSettings[ConfigurationKeys.PrivacyMode]);
+        }
+
+        private static void ReadPublicUrlSetting(NameValueCollection appSettings, Configuration configuration)
+        {
+            //optional: when it is not defined the url is taken from the exchange front end proxy header
+            var value = appSettings[ConfigurationKeys.PublicUrl];
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return;
+            }
+
+            var normalized = PublicUrlResolver.Normalize(value);
+            if (string.IsNullOrWhiteSpace(normalized))
+            {
+                throw new Exception($"Configuration error: '{ConfigurationKeys.PublicUrl}' must be an absolute HTTPS URL without credentials, query or fragment");
+            }
+
+            configuration.PublicUrl = normalized;
         }
 
         private static void ReadTwoFaIdentityAttributeSetting(NameValueCollection appSettings, Configuration configuration)
@@ -193,6 +235,38 @@ namespace MultiFactor.IIS.Adapter
             }
 
             configuration.BypassSecondFactorWhenApiUnreachable = parsed;
+        }
+
+        private static void SetSessionLifeTime(string value, Configuration configuration)
+        {
+            configuration.SessionLifeTimeInHours = ParseBoundedPositiveIntOrDefault(
+                value,
+                Constants.MIN_SESSION_LIFE_TIME_IN_HOURS,
+                Constants.MAX_SESSION_LIFE_TIME_IN_HOURS,
+                Constants.DEFAULT_SESSION_LIFE_TIME_IN_HOURS);
+        }
+
+        private static void SetReRequestDelay(string value, Configuration configuration)
+        {
+            configuration.ReRequestDelayInMinutes = ParseBoundedPositiveIntOrDefault(
+                value,
+                Constants.MIN_SECOND_FACTOR_RE_REQUEST_DELAY_IN_MINUTES,
+                Constants.MAX_SECOND_FACTOR_RE_REQUEST_DELAY_IN_MINUTES,
+                Constants.DEFAULT_SECOND_FACTOR_RE_REQUEST_DELAY_IN_MINUTES);
+        }
+
+        private static int ParseBoundedPositiveIntOrDefault(
+            string value,
+            int minValue,
+            int maxValue,
+            int defaultValue)
+        {
+            if (!int.TryParse(value, out var parsed) || parsed < minValue)
+            {
+                return defaultValue;
+            }
+
+            return Math.Min(parsed, maxValue);
         }
     }
 }

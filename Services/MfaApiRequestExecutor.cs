@@ -20,13 +20,13 @@ namespace MultiFactor.IIS.Adapter.Services
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task Execute(string postbackUrl, string appRootPath)
+        public async Task Execute(string callbackUrl)
         {
             var identity = LdapIdentity.Parse(_context.User.Identity.Name);
             try
             {
                 _logger.Info($"Execute 2fa for {identity.RawName}");
-                var multiFactorAccessUrl = _accessUrl.Get(identity, postbackUrl);
+                var multiFactorAccessUrl = _accessUrl.Get(identity, callbackUrl);
                 _context.Response.Redirect(multiFactorAccessUrl, true);
             }
             catch (Exception ex) when (NeedToBypass(ex))
@@ -36,7 +36,7 @@ namespace MultiFactor.IIS.Adapter.Services
                     $"Bypass session duration: {Configuration.Current.ApiLifeCheckInterval.TotalMinutes} min");
                 _context.GetCacheAdapter()
                     .SetApiUnreachable(identity.RawName, true);
-                _context.Response.Redirect(appRootPath, true);
+                _context.Response.Redirect(callbackUrl, true);
             }
             catch (Exception ex) when (UserNotRegistered(ex))
             {

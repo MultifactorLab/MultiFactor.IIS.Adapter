@@ -31,5 +31,15 @@ namespace MultiFactor.IIS.Adapter.Extensions
             else
                 return httpContext.GetCacheAdapter().GetApiUnreachable(name);
         }
+
+        public static bool HasApiUnreachableFlag(this HttpContextBase httpContext, string userName)
+        {
+            if (httpContext == null || string.IsNullOrWhiteSpace(userName))
+            {
+                return false;
+            }
+
+            return httpContext.GetCacheAdapter().GetApiUnreachable(Util.CanonicalizeUserName(userName));
+        }
     }
 }
