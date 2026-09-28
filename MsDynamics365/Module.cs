@@ -24,7 +24,7 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
                 };
 
                 context.Response.Cookies.Add(cookie);
-                context.Response.Redirect(GetWebAppRoot(), true);
+                context.Response.Redirect(PublicUrlResolver.ResolveCrm(context), true);
 
                 return;
             }
@@ -53,17 +53,6 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             var user = LdapIdentity.Parse(context.User.Identity.Name);
 
 
-            //process request or postback to/from MultiFactor
-            if (path.Contains(Constants.MULTIFACTOR_PAGE))
-            {
-                if (context.Request.HttpMethod == "POST")
-                {
-                    ProcessMultifactorRequest(context);
-                }
-
-                return;
-            }
-
             var ad = new ActiveDirectoryService(context.GetCacheAdapter(), Logger.IIS);
             var secondFactorRequired = new UserRequiredSecondFactor(ad, Logger.IIS);
             if (!secondFactorRequired.Execute(user))
@@ -89,56 +78,15 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
                 return;
             }       
             
-            //redirect to mfa
-            var redirectUrl = $"{GetWebAppRoot()}{Constants.MULTIFACTOR_PAGE}";
-            context.Response.Redirect(redirectUrl);       
-        }
-
-        private void ProcessMultifactorRequest(HttpContextBase context)
-        {
-            //check if user session timed-out
-            if (!context.User.Identity.IsAuthenticated)
-            {
-                context.Response.Redirect(context.Request.ApplicationPath);
-                return;
-            }
-
-            var url = context.Request.Form["url"];
-            if (url == null)
-            {
-                return;
-            }
-
+            //multifactor posts the access token back to this url and the user returns here after the second factor
+            var callbackUrl = PublicUrlResolver.ResolveCrm(context);
             var executor = MfaApiRequestExecutorFactory.CreateCrm(context);
-            executor.Execute(url, GetWebAppRoot());
+            executor.Execute(callbackUrl);
         }
 
         private static bool NeedToBypass(Exception ex)
         {
             return ex.Message?.StartsWith(Constants.API_UNREACHABLE_CODE) == true && Configuration.Current.BypassSecondFactorWhenApiUnreachable;
-        }
-
-        private string GetWebAppRoot()
-        {
-            var context = HttpContext.Current;
-
-            var host = (context.Request.Url.IsDefaultPort) ?
-                context.Request.Url.Host :
-                context.Request.Url.Authority;
-
-            host = $"{context.Request.Url.Scheme}://{host}";
-
-            if (context.Request.ApplicationPath != "/")
-            {
-                host = $"{host}{HttpContext.Current.Request.ApplicationPath}";
-            }
-
-            if (!host.EndsWith("/"))
-            {
-                host = $"{host}/";
-            }
-
-            return host;
         }
     }
 }

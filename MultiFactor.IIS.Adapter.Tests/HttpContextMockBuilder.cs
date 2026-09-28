@@ -12,6 +12,8 @@ namespace MultiFactor.IIS.Adapter.Tests
         public Mock<HttpResponseBase> Response { get; }
         public HttpCookieCollection RequestCookies { get; }
         public NameValueCollection Form { get; }
+        public NameValueCollection Params { get; }
+        public NameValueCollection Headers { get; }
 
         private HttpContextMockBuilder()
         {
@@ -20,6 +22,8 @@ namespace MultiFactor.IIS.Adapter.Tests
             Response = new Mock<HttpResponseBase>();
             RequestCookies = new HttpCookieCollection();
             Form = new NameValueCollection();
+            Params = new NameValueCollection();
+            Headers = new NameValueCollection();
         }
 
         public static Mock<HttpContextBase> Create(Action<HttpContextMockBuilder> build = null)
@@ -32,10 +36,13 @@ namespace MultiFactor.IIS.Adapter.Tests
         private Mock<HttpContextBase> Build()
         {
             Request.SetupGet(x => x.Form).Returns(Form);
+            Request.SetupGet(x => x.Params).Returns(Params);
+            Request.SetupGet(x => x.Headers).Returns(Headers);
             Response.SetupGet(x => x.Cookies).Returns(RequestCookies);
 
             HttpContext.SetupGet(context => context.Request).Returns(Request.Object);
             HttpContext.SetupGet(context => context.Response).Returns(Response.Object);
+            HttpContext.SetupGet(context => context.Cache).Returns(HttpRuntime.Cache);
             return HttpContext;
         }
     }

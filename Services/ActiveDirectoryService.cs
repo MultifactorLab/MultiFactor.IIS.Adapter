@@ -3,7 +3,9 @@ using MultiFactor.IIS.Adapter.Interop;
 using MultiFactor.IIS.Adapter.Services.Ldap;
 using MultiFactor.IIS.Adapter.Services.Ldap.Profile;
 using System;
+using System.Collections.Generic;
 using System.DirectoryServices.Protocols;
+using System.Linq;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
@@ -101,7 +103,8 @@ namespace MultiFactor.IIS.Adapter.Services
 
         private bool ValidateMembershipInternal(LdapIdentity identity)
         {
-            var groupName = _config.ActiveDirectory2FaGroup;
+            var groupNames = _config.ActiveDirectory2FaGroups;
+            var anyGroupResolved = false;
 
             try
             {
@@ -110,23 +113,14 @@ namespace MultiFactor.IIS.Adapter.Services
                     using (var adapter = LdapConnectionAdapter.Create(domain, _logger))
                     {
                         var baseDn = adapter.Domain.GetDn();
-                        var groupDn = _cache.GetGroupDn(groupName);
-                        if (groupDn == null)
+                        var groupDns = GetGroupDns(adapter, domain, groupNames, baseDn);
+                        if (groupDns.Length == 0)
                         {
-                            groupDn = GetGroupDn(adapter, groupName, baseDn);
-                            if (groupDn != null)
-                            {
-                                _cache.SetGroupDn(groupName, groupDn);
-                            }
+                            continue;
                         }
 
-                        if (groupDn == null)
-                        {
-                            _logger.Warn($"Security group {groupName} not exists");
-                            return true; //group not exists, let unknown result will be true
-                        }
+                        anyGroupResolved = true;
 
-                        _logger.Info($"Try validate membership {identity.RawName} profile from {domain} in {groupDn}");
                         UserSearchContext searchContext;
                         if (identity.HasNetbiosName())
                         {
@@ -138,18 +132,32 @@ namespace MultiFactor.IIS.Adapter.Services
                             searchContext = new UserSearchContext(domain, identity.Name, identity.RawName);
                         }
 
-                        var searchFilter = $"(&({searchContext.UserIdentity.TypeName}={searchContext.UserIdentity.Name})(memberOf:1.2.840.113556.1.4.1941:={groupDn}))";
+                        var membershipFilter = string.Join(string.Empty,
+                            groupDns.Select(groupDn => $"(memberOf:1.2.840.113556.1.4.1941:={LdapFilter.Escape(groupDn)})"));
+                        if (groupDns.Length > 1) membershipFilter = $"(|{membershipFilter})";
+
+                        _logger.Info($"Try validate membership {identity.RawName} profile from {domain} in 2FA groups: {string.Join(", ", groupNames)}");
+                        var escapedUserName = LdapFilter.Escape(searchContext.UserIdentity.Name);
+                        var searchFilter = $"(&({searchContext.UserIdentity.TypeName}={escapedUserName}){membershipFilter})";
                         var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, true, "DistinguishedName");
 
                         if (response.Entries.Count != 0)
                         {
-                            _logger.Info($"{identity.RawName} is member of {groupName}");
+                            _logger.Info($"{identity.RawName} is member of one of the 2FA groups: {string.Join(", ", groupNames)}");
                             return true;
                         }
                     }
                     // very noisy, only for debug
                     // _logger.Info($"ValidateMembership iteration for {domain} finished");
                 }
+
+                if (!anyGroupResolved)
+                {
+                    _logger.Warn($"None of the configured 2FA groups ({string.Join(", ", groupNames)}) exists, nothing to validate membership against");
+                    return true;
+                }
+
+                _logger.Info($"{identity.RawName} is not member of any 2FA group ({string.Join(", ", groupNames)})");
                 return false;
             }
             catch (LdapException ex)
@@ -164,12 +172,44 @@ namespace MultiFactor.IIS.Adapter.Services
             return true; //let unknown result will be true
         }
 
+        private string[] GetGroupDns(
+            LdapConnectionAdapter adapter,
+            string domain,
+            string[] groupNames,
+            string baseDn)
+        {
+            var groupDns = new List<string>();
+            foreach (var groupName in groupNames)
+            {
+                var cacheKey = $"{domain}:{groupName}";
+                var groupDn = _cache.GetGroupDn(cacheKey);
+                if (groupDn == null)
+                {
+                    groupDn = GetGroupDn(adapter, groupName, baseDn);
+                    if (groupDn != null)
+                    {
+                        _cache.SetGroupDn(cacheKey, groupDn);
+                    }
+                }
+
+                if (groupDn == null)
+                {
+                    _logger.Warn($"Security group {groupName} does not exist in domain {domain}");
+                    continue;
+                }
+
+                groupDns.Add(groupDn);
+            }
+
+            return groupDns.ToArray();
+        }
+
         /// <summary>
         /// Search group distinguished name
         /// </summary>
         private string GetGroupDn(LdapConnectionAdapter adapter, string name, string baseDn)
         {
-            var searchFilter = $"(&(objectCategory=group)(name={name}))";
+            var searchFilter = $"(&(objectCategory=group)(name={LdapFilter.Escape(name)}))";
             var response = adapter.Search(baseDn, searchFilter, SearchScope.Subtree, true, "DistinguishedName");
             if(response.Entries.Count != 0)
             {

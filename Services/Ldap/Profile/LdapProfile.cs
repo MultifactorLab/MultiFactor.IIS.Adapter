@@ -27,6 +27,8 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
         /// </summary>
         public string Custom2FAIdentity => GetAttr(_twoFaIdentityAttrName).FirstOrDefault();
 
+        public string Name => GetAttr("displayName").FirstOrDefault();
+
         public string Phone
         {
             get
@@ -40,6 +42,14 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
                     }
                 }
                 return null;
+            }
+        }
+
+        public string Email
+        {
+            get
+            {
+                return GetAttr("mail").FirstOrDefault() ?? GetAttr("email").FirstOrDefault();
             }
         }
 

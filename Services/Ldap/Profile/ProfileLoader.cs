@@ -30,6 +30,9 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
 
             var queryAttributes = new List<string>();
             queryAttributes.AddRange(_config.PhoneAttributes);
+            queryAttributes.Add("displayName");
+            queryAttributes.Add("mail");
+            queryAttributes.Add("email");
             if (_config.HasTwoFaIdentityAttribute)
             {
                 queryAttributes.Add(_config.TwoFaIdentityAttribute);
@@ -37,7 +40,8 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
             
             var baseDn = _adapter.Domain.GetDn(); 
 
-            var searchFilter = $"(&(objectClass=user)({user.TypeName}={user.Name}))";
+            var escapedUserName = LdapFilter.Escape(user.Name);
+            var searchFilter = $"(&(objectClass=user)({user.TypeName}={escapedUserName}))";
 
             //only this domain
             var response = _adapter.Search(baseDn, searchFilter, SearchScope.Subtree,false, queryAttributes.ToArray());

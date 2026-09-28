@@ -1,4 +1,4 @@
-﻿<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+﻿<Project ToolsVersion="15.0" DefaultTargets="Build" TreatAsLocalProperty="Version;AssemblyVersion;FileVersion" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -32,9 +32,14 @@
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
+  <PropertyGroup>
+    <Version Condition="'$(Version)' == ''">1.0.0.0</Version>
+    <AssemblyVersion Condition="'$(AssemblyVersion)' == ''">$(Version)</AssemblyVersion>
+    <FileVersion Condition="'$(FileVersion)' == ''">$(Version)</FileVersion>
+  </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugSymbols>false</DebugSymbols>
-    <DebugType>none</DebugType>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>pdbonly</DebugType>
     <Optimize>true</Optimize>
     <OutputPath>bin\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
@@ -62,13 +67,16 @@
     <Reference Include="System.Configuration" />
     <Reference Include="System.Web.Services" />
     <Reference Include="System.EnterpriseServices" />
+    <Reference Include="System.Runtime.Caching" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="mfa.aspx" />
-  </ItemGroup>
-  <ItemGroup>
+    <Compile Include="ActiveSync\AsyncLocker\AsyncLocker.cs" />
+    <Compile Include="ActiveSync\AsyncLocker\DisposableAction.cs" />
+    <Compile Include="ActiveSync\Module.cs" />
     <Compile Include="Configuration.cs" />
     <Compile Include="ConfigurationKeys.cs" />
+    <Compile Include="Core\PrivacyMode.cs" />
+    <Compile Include="Core\PrivacyModeDescriptor.cs" />
     <Compile Include="Dto\MultiFactorAccessPageDto.cs" />
     <Compile Include="Dto\MultiFactorWebResponseDto.cs" />
     <Compile Include="Dto\ScopeSupportInfoDto.cs" />
@@ -85,6 +93,7 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
+    <Compile Include="Services\Ldap\LdapFilter.cs" />
     <Compile Include="Services\Ldap\LdapIdentity.cs" />
     <Compile Include="Services\Ldap\NetbiosService.cs" />
     <Compile Include="Services\Ldap\Profile\AttributeKeyComparer.cs" />
@@ -104,13 +113,17 @@
     <Compile Include="Services\Logger.cs" />
     <Compile Include="Services\MfTraceIdFactory.cs" />
     <Compile Include="Services\MultiFactorApiClient.cs" />
+    <Compile Include="Services\PersonalData.cs" />
+    <Compile Include="Services\PublicUrlResolver.cs" />
     <Compile Include="Services\Ldap\Profile\ProfileLoader.cs" />
     <Compile Include="Services\AccessUrl.cs" />
+    <Compile Include="Services\RequestLoggerBuilder.cs" />
     <Compile Include="Services\TokenValidationService.cs" />
     <Compile Include="Util.cs" />
     <Compile Include="WebUtil.cs" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include="README.ActiveSync.ru.md" />
     <Content Include="README.md" />
   </ItemGroup>
   <ItemGroup>
@@ -150,6 +163,25 @@
       </FlavorProperties>
     </VisualStudio>
   </ProjectExtensions>
+  <Target Name="GenerateVersionInfo" BeforeTargets="BeforeCompile">
+    <ItemGroup>
+      <AssemblyAttributes Include="System.Reflection.AssemblyVersionAttribute">
+        <_Parameter1>$(AssemblyVersion)</_Parameter1>
+      </AssemblyAttributes>
+      <AssemblyAttributes Include="System.Reflection.AssemblyFileVersionAttribute">
+        <_Parameter1>$(FileVersion)</_Parameter1>
+      </AssemblyAttributes>
+      <AssemblyAttributes Include="System.Reflection.AssemblyInformationalVersionAttribute">
+        <_Parameter1>$(Version)</_Parameter1>
+      </AssemblyAttributes>
+    </ItemGroup>
+    <WriteCodeFragment Language="C#"
+                       OutputDirectory="$(IntermediateOutputPath)"
+                       OutputFile="VersionInfo.g.cs"
+                       AssemblyAttributes="@(AssemblyAttributes)">
+      <Output TaskParameter="OutputFile" ItemName="Compile" />
+    </WriteCodeFragment>
+  </Target>
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
   <Target Name="BeforeBuild">

@@ -63,8 +63,7 @@ Outlook Web Access (OWA) is an Exchange web-client that uses IIS capabilities.
 ### OWA Configuration
 
 1. Copy the ``Bin\MultiFactor.IIS.Adapter.dll`` file into the directory<br/>``C:\Program Files\Microsoft\Exchange Server\V15\ClientAccess\Owa\Bin``;
-2. Copy the ``mfa.aspx`` file into the directory<br/>``C:\Program Files\Microsoft\Exchange Server\V15\ClientAccess\Owa``;
-3. Edit the file<br/>``C:\Program Files\Microsoft\Exchange Server\V15\ClientAccess\Owa\web.config``:
+2. Edit the file<br/>``C:\Program Files\Microsoft\Exchange Server\V15\ClientAccess\Owa\web.config``:
    - First, create a backup copy of the file
    - Under ```<modules>```, on the first line add:<br/><br/>
      ```xml
@@ -78,20 +77,48 @@ Outlook Web Access (OWA) is an Exchange web-client that uses IIS capabilities.
      ```
    - Save changes and close the file.
 
-4. To selectively enable access based on Active Directory group membership, add the following parameters to the configuration:
+3. To selectively enable access based on Active Directory group membership, add the following parameters to the configuration:
 
    ```xml
-   <add key="multifactor:active-directory-2fa-group" value="owa-2fa" />
+   <add key="multifactor:active-directory-2fa-group" value="owa-2fa;Users" />
    <add key="multifactor:active-directory-2fa-group-membership-cache-timeout" value="15"/>
    ```
-   * The first parameter ``multifactor:active-directory-2fa-group`` &mdash; AD group name. The group can be nested and contain other groups;
+   * The first parameter ``multifactor:active-directory-2fa-group`` &mdash; semicolon-separated AD group names without spaces. A user requires 2FA when they belong to at least one configured group. Groups can be nested;
    * The second parameter ``multifactor:active-directory-2fa-group-membership-cache-timeout`` &mdash; the time interval (in minutes) at which the user's group information is updated. For optimal performance, the default value is 15 minutes (but you can set 0 if needed as well).
 
-5. To work with the Multifactor API through HTTP Proxy, add the following parameter to the configuration:
+4. To work with the Multifactor API through HTTP Proxy, add the following parameter to the configuration:
 
    ```xml
    <add key="multifactor:api-proxy" value="http://proxy:3128" />
    ```
+
+5. After the second factor the user is returned to the external address of OWA &mdash; the one they open in the browser. The adapter takes it from the ``msExchProxyUri`` header that Exchange adds when it proxies the request to the back end, so a standard deployment needs no configuration.
+
+   Set the address manually if the user ends up at the wrong address after the second factor, or a configuration error appears in the event log. That happens with a non-standard OWA publishing, and when users must be returned elsewhere:
+
+   ```xml
+   <add key="multifactor:public-url" value="https://mail.example.com/owa/" />
+   ```
+
+   The value must be an absolute HTTPS URL that includes the application path, without a query string or a fragment. It takes precedence over the detected address.
+
+
+6. To limit the personal data sent to the Multifactor API, add the privacy mode parameter:
+
+   ```xml
+   <add key="multifactor:privacy-mode" value="Full" />
+   ```
+
+   Supported values are `None` (send all personal data, default), `Full` (send no personal data), and
+   `Partial` with a comma-separated list of allowed fields (`Name`, `Email`, `Phone`).
+
+   The adapter reads the user name (`displayName`), email (`mail`) and phone from Active Directory
+   and sends them to the Multifactor API. Privacy mode controls which of them leave the adapter: `Full`
+   sends none, `Partial` sends only the listed fields (e.g. `Partial:Email,Phone`), `None` sends all.
+   The user identity is always sent regardless of the mode. The phone attribute is configurable via
+   `multifactor:phone-attribute`; without it the phone is not read (and therefore not sent) in any mode.
+
+   An unexpected value falls back to `None`.
    
 ## Owa download domains requirements
 

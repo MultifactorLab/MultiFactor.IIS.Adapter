@@ -22,7 +22,7 @@ namespace MultiFactor.IIS.Adapter.Owa
                 throw new ArgumentNullException(nameof(identity));
             }
 
-            if (string.IsNullOrEmpty(Configuration.Current.ActiveDirectory2FaGroup))
+            if (Configuration.Current.ActiveDirectory2FaGroups.Length == 0)
             {
                 return true;
             }

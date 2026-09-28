@@ -4,6 +4,8 @@
 
 _Also available in other languages: [English](README.md)_
 
+Инструкция по установке и ручной проверке модуля Exchange ActiveSync: [README.ActiveSync.ru.md](README.ActiveSync.ru.md).
+
 MultiFactor.IIS.Adapter &mdash; программный компонент, расширение для Microsoft Exchange Server. Позволяет быстро подключить мультифакторную аутентификацию пользователей к Outlook Web Access (OWA). 
 
 Компонент является частью гибридного 2FA решения сервиса <a href="https://multifactor.ru/" target="_blank">MultiFactor</a>.
@@ -62,8 +64,7 @@ Outlook Web Access (OWA) — веб-клиент Exchange, использующ�
 ### Настройка OWA
 
 1. Скопируйте файл ``Bin\MultiFactor.IIS.Adapter.dll`` в директорию <br/>``C:\Program Files\Microsoft\Exchange Server\V15\ClientAccess\Owa\Bin``;
-2. Скопируйте файл ``mfa.aspx`` в директорию <br/>``C:\Program Files\Microsoft\Exchange Server\V15\ClientAccess\Owa``;
-3. Отредактируйте файл <br/>``C:\Program Files\Microsoft\Exchange Server\V15\ClientAccess\Owa\web.config``:
+2. Отредактируйте файл <br/>``C:\Program Files\Microsoft\Exchange Server\V15\ClientAccess\Owa\web.config``:
    - сделайте резервную копию файла
    - в раздел ```<modules>``` добавьте компонент первой строкой:<br/><br/>
      ```xml
@@ -76,20 +77,45 @@ Outlook Web Access (OWA) — веб-клиент Exchange, использующ�
      <add key="multifactor:api-secret" value="API Secret из настроек Мультифактора" />
      ```
    - сохраните изменения и закройте файл.
-4. Для избирательного включения доступа на основне принадлежности к группе Active Directory, добавьте в конфигурацию параметры:
+3. Для избирательного включения доступа на основе принадлежности к группе Active Directory добавьте в конфигурацию параметры:
 
    ```xml
-   <add key="multifactor:active-directory-2fa-group" value="owa-2fa" />
+   <add key="multifactor:active-directory-2fa-group" value="owa-2fa;Users" />
    <add key="multifactor:active-directory-2fa-group-membership-cache-timeout" value="15"/>
    ```
-   * Первый параметр ``multifactor:active-directory-2fa-group`` &mdash; название группы в AD. Группа может быть вложенной, то есть содержать в себе другие группы;
+   * Первый параметр ``multifactor:active-directory-2fa-group`` &mdash; названия групп в AD через точку с запятой без пробелов. Пользователю требуется 2FA, если он состоит хотя бы в одной из них. Группы могут быть вложенными;
    * Второй параметр ``multifactor:active-directory-2fa-group-membership-cache-timeout`` &mdash; промежуток времени (в минутах) через который обновляется информация о вхождении пользователя в группу. Для оптимизации производительности, значение по-умолчанию составляет 15 минут (но можно поставить 0).
 
-5. Для работы с API Мультифактора через HTTP Proxy, добавьте в конфигурацию параметр:
+4. Для работы с API Мультифактора через HTTP Proxy добавьте в конфигурацию параметр:
 
    ```xml
    <add key="multifactor:api-proxy" value="http://proxy:3128" />
    ```
+
+5. После второго фактора пользователь возвращается на внешний адрес OWA — тот, который открывает в браузере. Адаптер берёт его из заголовка ``msExchProxyUri``, который Exchange добавляет при проксировании запроса на бэкенд, поэтому для стандартной инсталляции настраивать ничего не нужно.
+
+   Задайте адрес вручную, если после второго фактора пользователь попадает не туда или в журнале событий появляется ошибка конфигурации. Так бывает при нестандартной публикации OWA, а также когда пользователей нужно возвращать на другой адрес:
+
+   ```xml
+   <add key="multifactor:public-url" value="https://mail.example.com/owa/" />
+   ```
+
+   Значение должно быть абсолютным HTTPS-адресом с путём приложения, без строки запроса и фрагмента. Оно имеет приоритет над определённым автоматически.
+
+6. Чтобы ограничить передачу персональных данных в API Мультифактора, добавьте параметр режима конфиденциальности:
+
+   ```xml
+   <add key="multifactor:privacy-mode" value="Full" />
+   ```
+
+   Поддерживаются значения `None` (передавать все персональные данные, значение по умолчанию), `Full` (не передавать
+   персональные данные) и `Partial` со списком разрешённых полей через запятую (`Name`, `Email`, `Phone`).
+
+   Адаптер читает из Active Directory имя (`displayName`), email (`mail`) и телефон пользователя и передаёт их
+   в API Мультифактора. Режим конфиденциальности определяет, какие из этих полей уходят из адаптера: `Full` — ни одного,
+   `Partial` — только перечисленные (например, `Partial:Email,Phone`), `None` — все. Идентификатор пользователя
+   передаётся всегда, независимо от режима. Атрибут телефона настраивается через `multifactor:phone-attribute`; без него
+   телефон не читается (и не передаётся) ни в одном режиме.
 
 ## Требования к доменам загрузки OWA
 

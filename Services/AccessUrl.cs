@@ -36,7 +36,8 @@ namespace MultiFactor.IIS.Adapter.Services
                 twoFAIdentity = profile.Custom2FAIdentity;
             }
 
-            var multiFactorAccessUrl = _api.CreateRequest(twoFAIdentity, identity.RawName, postbackUrl, profile?.Phone);
+            var personalData = new PersonalData(profile.Name, profile.Email, profile.Phone, Configuration.Current.PrivacyMode);
+            var multiFactorAccessUrl = _api.CreateRequest(twoFAIdentity, identity.RawName, postbackUrl, personalData.Name, personalData.Email, personalData.Phone);
             return multiFactorAccessUrl;
         }
 

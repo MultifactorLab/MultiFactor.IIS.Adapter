@@ -8,6 +8,8 @@
         public static readonly string ApiKey = $"{_prefix}:api-key";
         public static readonly string ApiSecret = $"{_prefix}:api-secret";
         public static readonly string ApiProxy = $"{_prefix}:api-proxy";
+        public static readonly string PrivacyMode = $"{_prefix}:privacy-mode";
+        public static readonly string PublicUrl = $"{_prefix}:public-url";
         public static readonly string BypassSecondFactorWhenApiUnreachable = $"{_prefix}:bypass-second-factor-when-api-unreachable";
 
         public static readonly string ActiveDirectoryDomain = $"{_prefix}:active-directory-domain";
@@ -19,5 +21,7 @@
         public static readonly string UseUpnAsIdentity = $"{_prefix}:use-upn-as-identity";
         public static readonly string TwoFAIdentityAttribyte = $"{_prefix}:use-attribute-as-identity";
         public static readonly string PhoneAttribute = $"{_prefix}:phone-attribute";
+        public static readonly string SessionLifeTimeInHours = $"{_prefix}:session-life-time";
+        public static readonly string SecondFactorReRequestDelayInMinutes = $"{_prefix}:second-factor-re-request-delay";
     }
 }
