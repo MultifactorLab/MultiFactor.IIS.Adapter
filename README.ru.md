@@ -4,16 +4,14 @@
 
 _Also available in other languages: [English](README.md)_
 
-Инструкция по установке и ручной проверке модуля Exchange ActiveSync: [README.ActiveSync.ru.md](README.ActiveSync.ru.md).
-
-MultiFactor.IIS.Adapter &mdash; программный компонент, расширение для Microsoft Exchange Server. Позволяет быстро подключить мультифакторную аутентификацию пользователей к Outlook Web Access (OWA). 
+MultiFactor.IIS.Adapter &mdash; программный компонент, расширение для Microsoft Exchange Server. Позволяет быстро подключить мультифакторную аутентификацию пользователей к Outlook Web Access (OWA) и Exchange ActiveSync (EAS). 
 
 Компонент является частью гибридного 2FA решения сервиса <a href="https://multifactor.ru/" target="_blank">MultiFactor</a>.
 
 * <a href="https://github.com/MultifactorLab/MultiFactor.IIS.Adapter" target="_blank">Исходный код</a>
 * <a href="https://github.com/MultifactorLab/MultiFactor.IIS.Adapter/releases" target="_blank">Сборка</a>
 
-Дополнительные инструкции по интеграции 2FA в Outlook Web Access (OWA) см. в документации по адресу https://multifactor.ru/docs/outlook-web-access-2fa/.
+Дополнительные инструкции по интеграции 2FA в Outlook Web Access (OWA) см. в документации по адресу https://multifactor.ru/docs/outlook-web-access-2fa/, в Exchange ActiveSync &mdash; по адресу https://multifactor.ru/docs/baza-znanij/exchange-activesync-iis-adapter/.
 
 ## Содержание
 
@@ -24,6 +22,9 @@ MultiFactor.IIS.Adapter &mdash; программный компонент, ра�
 - [Конфигурация](#конфигурация)
   - [Настройка Multifactor](#настройка-multifactor)
   - [Настройка OWA](#настройка-owa)
+  - [Настройка ActiveSync](#настройка-activesync)
+- [Требования к доменам загрузки OWA](#требования-к-доменам-загрузки-owa)
+- [Особенности мобильных клиентов ActiveSync](#особенности-мобильных-клиентов-activesync)
 - [Дополнительная информация](#дополнительная-информация)
 - [Лицензия](#лицензия)
 
@@ -33,19 +34,49 @@ Microsoft Exchange Server — программный продукт для об�
 
 Outlook Web Access (OWA) — веб-клиент Exchange, использующий возможности IIS.
 
+Exchange ActiveSync (EAS) — протокол синхронизации почты, календарей и контактов между Exchange и мобильными устройствами.
+
+Компонент состоит из двух независимых модулей. Каждый подключается в ``web.config`` своего приложения IIS:
+
+| Модуль     | Что защищает                | Приложение IIS                | Тип модуля                                     |
+|------------|-----------------------------|-------------------------------|------------------------------------------------|
+| OWA        | Доступ к почте из браузера  | `owa`                         | `MultiFactor.IIS.Adapter.Owa.Module`           |
+| ActiveSync | Мобильные почтовые клиенты  | `Microsoft-Server-ActiveSync` | `MultiFactor.IIS.Adapter.ActiveSync.Module`    |
+
 ### Функции компонента
+
+**OWA**
 
 1. Защита доступа вторым фактором проверки подлинности при каждом входе и через настраиваемый промежуток времени;
 2. Самостоятельная настройка второго фактора пользователем при первом входе;
 3. Избирательное включение второго фактора на основе принадлежности к группе в Active Directory;
 4. Журнал доступа.
 
+**ActiveSync**
+
+1. Защита вторым фактором при настройке учётной записи на мобильном устройстве;
+2. Раздельные 2FA-сессии для устройств пользователя;
+3. Настраиваемый срок действия успешной 2FA-сессии;
+4. Задержка перед повторным запросом второго фактора после отказа;
+5. Избирательное включение второго фактора на основе принадлежности к группе в Active Directory;
+6. Журнал доступа в журнале событий Windows.
+
 ### Схема работы
+
+**OWA**
 
 1. Пользователь открывает сайт Outlook Web Access;
 2. OWA запрашивает первый фактор аутентификации: логин и пароль, проверяет корректность указанных данных и создает пользовательскую сессию;
 3. Компонент MultiFactor.IIS.Adapter проверяет, что сессия авторизована и переадресовывает пользователя на второй фактор аутентификации;
 4. После успешного прохождения второго фактора, пользователь возвращается на сайт OWA и продолжает работу.
+
+**ActiveSync**
+
+1. Мобильный клиент подключается к Exchange ActiveSync;
+2. Exchange проверяет логин и пароль пользователя;
+3. Компонент MultiFactor.IIS.Adapter отправляет запрос второго фактора в Мультифактор, пользователь его подтверждает;
+4. После успешного подтверждения пользователь получает доступ к почтовому ящику;
+5. Результат сохраняется для данного пользователя и устройства на настроенный срок.
 
 ## Требования для установки компонента
 
@@ -54,12 +85,17 @@ Outlook Web Access (OWA) — веб-клиент Exchange, использующ�
 3. На сервере должно быть установлено правильное время;
 4. На сервере должен быть установлен Net Framework версии 4.8.
 
+Для ActiveSync дополнительно:
+
+5. В IIS должно работать приложение ``Microsoft-Server-ActiveSync``;
+6. У защищаемых пользователей должен быть заранее настроен второй фактор в Мультифакторе: мобильный почтовый клиент не может показать страницу настройки.
+
 ## Конфигурация
 
 ### Настройка Multifactor
 
 1. Создайте аккаунт и войдите в <a href="https://admin.multifactor.ru" target="_blank">административную панель</a> Мультифактор;
-2. В разделе <a href="https://admin.multifactor.ru/resources" target="_blank">ресурсы</a> кликните **Добавить ресурс**. В появившемся списке выберите **Outlook Web Access** в разделе **Сайт**. Заполните необходимые поля для того, чтобы получить параметры **NAS Identifier** и **Shared Secret**. Эти параметры потребуются для завершения настройки.
+2. В разделе <a href="https://admin.multifactor.ru/resources" target="_blank">ресурсы</a> кликните **Добавить ресурс**. В появившемся списке выберите **Outlook Web Access** в разделе **Сайт** для OWA или **Microsoft ActiveSync** для ActiveSync. Для каждого модуля нужен свой ресурс. Заполните необходимые поля для того, чтобы получить параметры **NAS Identifier** и **Shared Secret** для OWA, **API Key** и **API Secret** для ActiveSync. Эти параметры потребуются для завершения настройки.
 
 ### Настройка OWA
 
@@ -117,6 +153,90 @@ Outlook Web Access (OWA) — веб-клиент Exchange, использующ�
    передаётся всегда, независимо от режима. Атрибут телефона настраивается через `multifactor:phone-attribute`; без него
    телефон не читается (и не передаётся) ни в одном режиме.
 
+### Настройка ActiveSync
+
+Компонент необходимо установить на каждый сервер Exchange, обслуживающий ActiveSync.
+
+1. Скопируйте файл ``Bin\MultiFactor.IIS.Adapter.dll`` в директорию <br/>``C:\Program Files\Microsoft\Exchange Server\V15\ClientAccess\Sync\Bin``;
+2. Отредактируйте файл <br/>``C:\Program Files\Microsoft\Exchange Server\V15\ClientAccess\Sync\web.config``:
+   - сделайте резервную копию файла
+   - в раздел ```<system.webServer><modules>``` добавьте компонент:<br/><br/>
+     ```xml
+     <add type="MultiFactor.IIS.Adapter.ActiveSync.Module, MultiFactor.IIS.Adapter" name="ActiveSync" />
+     ```
+   - в раздел ```<appSettings>``` добавьте параметры компонента:<br/><br/>
+     ```xml
+     <add key="multifactor:api-url" value="https://api.multifactor.ru" />
+     <add key="multifactor:api-key" value="API Key из настроек Мультифактора" />
+     <add key="multifactor:api-secret" value="API Secret из настроек Мультифактора" />
+     ```
+   - сохраните изменения и закройте файл;
+   - перезапустите пул приложений IIS, обслуживающий ``Microsoft-Server-ActiveSync``.
+
+   Фактический путь к приложению можно проверить в IIS Manager: **Sites** &rarr; **Exchange Back End** &rarr; **Microsoft-Server-ActiveSync** &rarr; **Basic Settings** &rarr; **Physical path**.
+
+3. Чтобы задать срок действия 2FA-сессии, добавьте в конфигурацию параметры:
+
+   ```xml
+   <add key="multifactor:session-life-time" value="8" />
+   <add key="multifactor:second-factor-re-request-delay" value="5" />
+   ```
+   * ``multifactor:session-life-time`` &mdash; срок действия успешной 2FA-сессии в часах, от 1 до 24. Значение по умолчанию &mdash; 1 час;
+   * ``multifactor:second-factor-re-request-delay`` &mdash; задержка в минутах перед повторным запросом второго фактора после отказа, от 1 до 60. Значение по умолчанию &mdash; 5 минут.
+
+   Сессия сохраняется отдельно для каждого сочетания пользователя и ``DeviceId``.
+
+4. Для избирательного включения доступа на основе принадлежности к группе Active Directory добавьте в конфигурацию параметры:
+
+   ```xml
+   <add key="multifactor:active-directory-2fa-group" value="eas-2fa" />
+   <add key="multifactor:active-directory-cache-timeout" value="15" />
+   ```
+   * ``multifactor:active-directory-2fa-group`` &mdash; названия групп в AD через точку с запятой без пробелов. Пользователю требуется 2FA, если он состоит хотя бы в одной из них. Группы могут быть вложенными. Без параметра второй фактор запрашивается у всех пользователей;
+   * ``multifactor:active-directory-cache-timeout`` &mdash; срок кеширования профиля пользователя и сведений о членстве в группе в минутах. Значение по умолчанию &mdash; 15 минут.
+
+   Если сервер обслуживает несколько доверенных доменов, укажите их через точку с запятой. Без параметра используется домен сервера Exchange:
+
+   ```xml
+   <add key="multifactor:active-directory-domain" value="contoso.local;fabrikam.local" />
+   ```
+
+5. По умолчанию в Мультифактор передаётся имя пользователя из Active Directory. Чтобы использовать другой атрибут в качестве идентификатора и читать номер телефона, добавьте:
+
+   ```xml
+   <add key="multifactor:use-attribute-as-identity" value="userPrincipalName" />
+   <add key="multifactor:phone-attribute" value="mobile;otherTelephone" />
+   ```
+   * ``multifactor:use-attribute-as-identity`` &mdash; атрибут Active Directory, который используется как идентификатор пользователя;
+   * ``multifactor:phone-attribute`` &mdash; атрибуты с номером телефона через точку с запятой. Без параметра телефон не читается.
+
+6. Чтобы ограничить передачу персональных данных в API Мультифактора, добавьте параметр режима конфиденциальности:
+
+   ```xml
+   <add key="multifactor:privacy-mode" value="Partial:Phone" />
+   ```
+
+   Поддерживаются значения `None` (передавать все персональные данные, значение по умолчанию), `Full` (не передавать
+   персональные данные) и `Partial` со списком разрешённых полей через запятую (`Email`, `Phone`). Модуль ActiveSync не
+   передаёт имя пользователя. Идентификатор пользователя передаётся всегда, независимо от режима.
+
+7. Для работы с API Мультифактора через HTTP Proxy добавьте в конфигурацию параметр:
+
+   ```xml
+   <add key="multifactor:api-proxy" value="http://proxy:3128" />
+   ```
+
+8. Чтобы задать поведение при недоступности API Мультифактора, добавьте в конфигурацию параметры:
+
+   ```xml
+   <add key="multifactor:bypass-second-factor-when-api-unreachable" value="false" />
+   <add key="multifactor:api-life-check-interval" value="15" />
+   ```
+   * ``multifactor:bypass-second-factor-when-api-unreachable`` &mdash; при `true` пользователь временно получает доступ без второго фактора, если API Мультифактора недоступен по сети; при `false` доступ запрещается. Значение по умолчанию &mdash; `true`. Для систем с повышенными требованиями к безопасности рекомендуется явно установить `false`;
+   * ``multifactor:api-life-check-interval`` &mdash; срок такого разрешения в минутах. Значение по умолчанию &mdash; 15 минут.
+
+   Ответы API с ошибкой, включая ограничение частоты запросов, не считаются сетевой недоступностью и не разрешают обход второго фактора.
+
 ## Требования к доменам загрузки OWA
 
 Домен загрузки должен быть поддоменом основного домена OWA. [(Источник)](https://learn.microsoft.com/ru-ru/exchange/plan-and-deploy/post-installation-tasks/security-best-practices/exchange-download-domains?view=exchserver-2019)
@@ -129,6 +249,12 @@ Outlook Web Access (OWA) — веб-клиент Exchange, использующ�
 |   Домен OWA    |             owa.example.com |
 | Домен загрузки | attachments.owa.example.com |
 
+## Особенности мобильных клиентов ActiveSync
+
+Полностью поддерживаются клиенты, которые передают отдельный ``DeviceId`` для каждого подключения, в том числе Gmail, Blue Mail, Aqua Mail и встроенный почтовый клиент iOS.
+
+Outlook для iOS и Android использует общее виртуальное устройство для подключений пользователя. Поэтому первое подключение требует подтверждения второго фактора, а последующие подключения могут использовать ту же 2FA-сессию. Учитывайте это ограничение при выборе разрешённых мобильных клиентов.
+
 ## Дополнительная информация
 
 Компонент:
@@ -136,8 +262,12 @@ Outlook Web Access (OWA) — веб-клиент Exchange, использующ�
 * Может работать в кластерной конфигурации, если он установлен на все сервера;
 * Одинаково хорошо работает с прямым доступом к серверу IIS и через прокси, например, nginx;
 * Не влияет на первый фактор аутентификации, а именно проверку логина и пароля пользователя;
-* Подключается к OWA. Работа с ECP, MAPI и ActiveSync остается без изменений;
-* Повторно запрашивает второй фактор через настраиваемый промежуток времени и закрывает оставленные пользователями сессии. Интервал времени настраивается в <a href="https://admin.multifactor.ru/groups" target="_blank">групповой политике</a> сервиса Мультифактор.
+* Модуль OWA подключается к OWA. Работа с ECP и MAPI остается без изменений; ActiveSync защищается, только если подключён модуль ActiveSync;
+* Повторно запрашивает второй фактор в OWA через настраиваемый промежуток времени и закрывает оставленные пользователями сессии. Интервал времени настраивается в <a href="https://admin.multifactor.ru/groups" target="_blank">групповой политике</a> сервиса Мультифактор;
+* В ActiveSync обрабатывает только первоначальный запрос ``Provision``; обычные операции синхронизации не создают новый запрос второго фактора;
+* Не применяется к системным почтовым ящикам Exchange;
+* Пишет диагностические события в журнал Windows **Application** с источниками ``Multifactor OWA`` и ``Multifactor ActiveSync``;
+* Может потребовать повторного внесения изменений в ``web.config`` после установки Exchange Cumulative Update или Security Update.
 
 ## Лицензия
 
