@@ -170,11 +170,13 @@ namespace MultiFactor.IIS.Adapter.Services
 
         private void SetItem(string key, string value, TimeSpan ttl)
         {
+            if (ttl <= TimeSpan.Zero) return;
             _context.Cache.Add(key, value, null, DateTime.Now.Add(ttl), Cache.NoSlidingExpiration, CacheItemPriority.Default, null);
         }
         
         private void SetItem<T>(string key, T value, TimeSpan ttl)
         {
+            if (ttl <= TimeSpan.Zero) return;
             _context.Cache.Add(key, value, null, DateTime.Now.Add(ttl), Cache.NoSlidingExpiration, CacheItemPriority.Default, null);
         }
     }

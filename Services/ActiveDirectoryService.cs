@@ -38,6 +38,7 @@ namespace MultiFactor.IIS.Adapter.Services
                 return profile;
             }
 
+            LdapIdentity fallbackIdentity = null;
             foreach (var domain in _config.ActiveDirectoryDomains)
             {
                 try
@@ -61,6 +62,7 @@ namespace MultiFactor.IIS.Adapter.Services
                         profile = loader.Load(searchContext.UserIdentity);
                         if (profile == null)
                         {
+                            fallbackIdentity = fallbackIdentity ?? searchContext.UserIdentity;
                             continue;
                         } 
                         
@@ -81,6 +83,13 @@ namespace MultiFactor.IIS.Adapter.Services
                 // very noisy, only for debug
                 // _logger.Info($"Get profile iteration for {domain} finished");
             }
+
+            if (fallbackIdentity != null)
+            {
+                _logger.Warn($"User {identity.RawName} was not found in any of the domains: {string.Join(", ", _config.ActiveDirectoryDomains)}");
+                return new LdapProfile(fallbackIdentity, _config);
+            }
+
             return null;
         }
 

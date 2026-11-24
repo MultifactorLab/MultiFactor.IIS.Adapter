@@ -157,6 +157,15 @@ For ActiveSync, additionally:
    `multifactor:phone-attribute`; without it the phone is not read (and therefore not sent) in any mode.
 
    An unexpected value falls back to `None`.
+7. To set the behavior when the Multifactor API is unreachable, add the following parameters to the configuration:
+
+   ```xml
+   <add key="multifactor:bypass-second-factor-when-api-unreachable" value="false" />
+   <add key="multifactor:api-life-check-interval" value="15" />
+   ```
+   * ``multifactor:bypass-second-factor-when-api-unreachable`` &mdash; with `true` the user temporarily gets access without the second factor if the Multifactor API is unreachable over the network; with `false` access is denied. The default value is `true`. For systems with high security requirements set `false` explicitly;
+   * ``multifactor:api-life-check-interval`` &mdash; how long such a bypass lasts, in minutes. The default value is 15 minutes.
+   * HTTP 401, 403, 429 and a request timeout from the Multifactor API deny access even with `true`.
 
 ### ActiveSync Configuration
 
@@ -198,7 +207,7 @@ Install the component on every Exchange server that serves ActiveSync.
    <add key="multifactor:active-directory-cache-timeout" value="15" />
    ```
    * ``multifactor:active-directory-2fa-group`` &mdash; semicolon-separated AD group names without spaces. A user requires 2FA when they belong to at least one configured group. Groups can be nested. Without the parameter the second factor is requested from all users;
-   * ``multifactor:active-directory-cache-timeout`` &mdash; the time interval (in minutes) for which the user's profile and group membership are cached. The default value is 15 minutes.
+   * ``multifactor:active-directory-cache-timeout`` &mdash; the time interval (in minutes) for which the user's profile and group membership are cached. The default value is 15 minutes, 0 disables caching.
 
    If the server serves several trusted domains, list them separated by semicolons. Without the parameter the domain of the Exchange server is used:
 
@@ -239,8 +248,7 @@ Install the component on every Exchange server that serves ActiveSync.
    ```
    * ``multifactor:bypass-second-factor-when-api-unreachable`` &mdash; with `true` the user temporarily gets access without the second factor if the Multifactor API is unreachable over the network; with `false` access is denied. The default value is `true`. For systems with high security requirements set `false` explicitly;
    * ``multifactor:api-life-check-interval`` &mdash; how long such a bypass lasts, in minutes. The default value is 15 minutes.
-
-   API error responses, including rate limiting, are not treated as network unavailability and do not bypass the second factor.
+   * HTTP 401, 403, 429 and a request timeout from the Multifactor API deny access even with `true`.
 
 ## Owa download domains requirements
 

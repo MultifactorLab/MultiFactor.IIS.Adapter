@@ -117,6 +117,8 @@
     <Compile Include="Services\PublicUrlResolver.cs" />
     <Compile Include="Services\Ldap\Profile\ProfileLoader.cs" />
     <Compile Include="Services\AccessUrl.cs" />
+    <Compile Include="Services\ApiErrorPolicy.cs" />
+    <Compile Include="Services\IAccessUrl.cs" />
     <Compile Include="Services\RequestLoggerBuilder.cs" />
     <Compile Include="Services\TokenValidationService.cs" />
     <Compile Include="Util.cs" />

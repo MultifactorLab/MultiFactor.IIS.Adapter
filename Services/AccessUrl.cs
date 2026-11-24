@@ -2,11 +2,10 @@
 using MultiFactor.IIS.Adapter.Services.Ldap;
 using System;
 using System.Security.Principal;
-using System.Threading.Tasks;
 
 namespace MultiFactor.IIS.Adapter.Services
 {
-    public class AccessUrl
+    public class AccessUrl : IAccessUrl
     {
         private readonly ActiveDirectoryService _activeDirectory;
         private readonly MultiFactorApiClient _api;
@@ -41,11 +40,11 @@ namespace MultiFactor.IIS.Adapter.Services
             return multiFactorAccessUrl;
         }
 
-        public async Task<ScopeSupportInfoDto> Info()
+        public ScopeSupportInfoDto Info()
         {
             try
             {
-                return _api.GetScopeSupportInfo();
+                return _api.GetScopeSupportInfo() ?? new ScopeSupportInfoDto();
             }
             catch (Exception ex)
             {

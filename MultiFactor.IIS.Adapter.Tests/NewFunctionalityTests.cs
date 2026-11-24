@@ -289,23 +289,61 @@ namespace MultiFactor.IIS.Adapter.Tests
         }
 
         [Fact]
-        public void CreateAccessRequest_Http429WithBypassEnabled_ShouldDenyAndNotSetFailOpenCache()
+        public void Cache_ZeroTtl_ShouldNotStoreItem()
         {
-            var exception = CreateHttpError((HttpStatusCode)429);
+            var context = HttpContextMockBuilder.Create();
+            var cache = new CacheAdapter(context.Object);
+            var identity = "zero-ttl-user-" + Guid.NewGuid().ToString("N");
+
+            cache.SetApiUnreachable(identity, true, TimeSpan.Zero);
+
+            Assert.False(cache.GetApiUnreachable(identity));
+        }
+
+        [Theory]
+        [InlineData(401)]
+        [InlineData(403)]
+        [InlineData(429)]
+        public void CreateAccessRequest_HttpDenialWithBypassEnabled_ShouldDenyAndNotSetFailOpenCache(int statusCode)
+        {
+            var exception = CreateHttpError((HttpStatusCode)statusCode);
+            AssertDeniedWithoutFailOpen(exception, "denied-" + statusCode);
+        }
+
+        [Fact]
+        public void CreateAccessRequest_TimeoutWithBypassEnabled_ShouldDenyAndNotSetFailOpenCache()
+        {
+            var exception = new WebException("The operation has timed out", WebExceptionStatus.Timeout);
+            AssertDeniedWithoutFailOpen(exception, "timed-out");
+        }
+
+        [Fact]
+        public void CreateAccessRequest_Http503WithBypassEnabled_ShouldBypassTemporarily()
+        {
+            var exception = CreateHttpError(HttpStatusCode.ServiceUnavailable);
             using (var memoryCache = CreateCache())
             {
                 var module = new ConcurrentTestModule(memoryCache) { AccessRequestException = exception };
-                var context = CreateProvisionContext("CONTOSO\\rate-limited", "device-1");
+                var context = CreateProvisionContext("CONTOSO\\api-down", "device-1");
 
-                var result = module.CreateAccessRequest(
-                    context.Object,
-                    "rate-limited",
-                    null,
-                    null,
-                    "CONTOSO\\rate-limited");
+                var result = module.CreateAccessRequest(context.Object, "api-down", null, null, "CONTOSO\\api-down");
+
+                Assert.Equal(AccessRequestStatus.Bypassed, result.Status);
+                Assert.True(context.Object.GetCacheAdapter().GetApiUnreachable("api-down"));
+            }
+        }
+
+        private static void AssertDeniedWithoutFailOpen(WebException exception, string userName)
+        {
+            using (var memoryCache = CreateCache())
+            {
+                var module = new ConcurrentTestModule(memoryCache) { AccessRequestException = exception };
+                var context = CreateProvisionContext("CONTOSO\\" + userName, "device-1");
+
+                var result = module.CreateAccessRequest(context.Object, userName, null, null, "CONTOSO\\" + userName);
 
                 Assert.Equal(AccessRequestStatus.Denied, result.Status);
-                Assert.False(context.Object.GetCacheAdapter().GetApiUnreachable("rate-limited"));
+                Assert.False(context.Object.GetCacheAdapter().GetApiUnreachable(userName));
             }
         }
 

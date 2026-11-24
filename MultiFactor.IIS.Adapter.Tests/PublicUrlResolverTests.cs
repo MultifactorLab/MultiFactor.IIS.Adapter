@@ -6,6 +6,7 @@ using Xunit;
 
 namespace MultiFactor.IIS.Adapter.Tests
 {
+    [Collection(ConfigurationCollection.Name)]
     public class PublicUrlResolverTests : IDisposable
     {
         private const string ProxyHeader = "msExchProxyUri";

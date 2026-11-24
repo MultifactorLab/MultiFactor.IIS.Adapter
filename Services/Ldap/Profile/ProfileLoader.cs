@@ -66,7 +66,7 @@ namespace MultiFactor.IIS.Adapter.Services.Ldap.Profile
             }
             
             _logger.Info($"User {user} was not found in {baseDn}");
-            return profile;
+            return null;
         }
 
         private static void FillProfile(SearchResponse response, List<string> queryAttributes, LdapProfile profile)

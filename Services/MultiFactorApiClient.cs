@@ -81,9 +81,14 @@ namespace MultiFactor.IIS.Adapter.Services
             }
             catch (WebException wex) // webclient way to catch unsuccess http status code
             {
+                if (ApiErrorPolicy.ShouldDenyRequest(wex, out var reason))
+                {
+                    _logger.Error($"Multifactor API {Configuration.Current.ApiUrl} rejected the request: {reason}");
+                    throw new Exception($"Multifactor API request denied: {reason}", wex);
+                }
+
                 var errmsg = $"Multifactor API host unreachable: {Configuration.Current.ApiUrl}. Reason: {wex.Message}";
                 _logger.Error(errmsg);
-                _logger.Error(wex.Message);
                 throw new Exception($"{Constants.API_UNREACHABLE_CODE} {errmsg}", wex);
             }
             catch (Exception ex)

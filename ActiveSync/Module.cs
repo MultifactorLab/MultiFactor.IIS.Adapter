@@ -224,19 +224,13 @@ namespace MultiFactor.IIS.Adapter.ActiveSync
             }
             catch (WebException wex) when (_bypassWhenApiUnreachable())
             {
-                var errmsg = $"Multifactor API host unreachable: {_getApiUrl()}. Reason: {wex}";
-                Logger.ActiveSync.Error(errmsg);
-
-                if (wex.Response != null)
+                if (ApiErrorPolicy.ShouldDenyRequest(wex, out var reason))
                 {
-                    var httpStatusCode = ((HttpWebResponse)wex.Response).StatusCode;
-                    if ((int)httpStatusCode == 429)
-                    {
-                        Logger.ActiveSync.Error($"Too many requests. Please try again later.");
-                    }
-
+                    Logger.ActiveSync.Error($"Multifactor API {_getApiUrl()} rejected the request: {reason}. Bypass is not applied.");
                     return new MultiFactorAccessRequest { Status = AccessRequestStatus.Denied };
                 }
+
+                Logger.ActiveSync.Error($"Multifactor API host unreachable: {_getApiUrl()}. {wex}");
 
                 Logger.ActiveSync.Warn($"Bypassing the second factor for user '{identity}'.");
                 context

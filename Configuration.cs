@@ -190,15 +190,15 @@ namespace MultiFactor.IIS.Adapter
 
         private static void ReadActiveDirectoryCacheTimoutSetting(NameValueCollection appSettings, Configuration configuration)
         {
-            var ttl = TimeSpan.Zero;
+            var ttl = TimeSpan.FromMinutes(15);
 
             var legacyValue = appSettings[ConfigurationKeys.ActiveDirectory2FAGroupMembershipCacheTimeout];
-            if (int.TryParse(legacyValue, out var legVal)) ttl = TimeSpan.FromMinutes(legVal);
+            if (int.TryParse(legacyValue, out var legVal) && legVal >= 0) ttl = TimeSpan.FromMinutes(legVal);
 
             var value = appSettings[ConfigurationKeys.ActiveDirectoryCacheTimeout];
-            if (int.TryParse(value, out var val)) ttl = TimeSpan.FromMinutes(val);
+            if (int.TryParse(value, out var val) && val >= 0) ttl = TimeSpan.FromMinutes(val);
 
-            configuration.ActiveDirectoryCacheTimout = ttl > TimeSpan.Zero ? ttl : TimeSpan.FromMinutes(15);
+            configuration.ActiveDirectoryCacheTimout = ttl;
         }
 
         private static void ReadApiLifeCheckIntervalSetting(NameValueCollection appSettings, Configuration configuration)

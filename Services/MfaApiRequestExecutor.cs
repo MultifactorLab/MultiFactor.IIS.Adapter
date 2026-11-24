@@ -2,7 +2,6 @@
 using MultiFactor.IIS.Adapter.Properties;
 using MultiFactor.IIS.Adapter.Services.Ldap;
 using System;
-using System.Threading.Tasks;
 using System.Web;
 
 namespace MultiFactor.IIS.Adapter.Services
@@ -10,17 +9,17 @@ namespace MultiFactor.IIS.Adapter.Services
     internal class MfaApiRequestExecutor
     {
         private readonly HttpContextBase _context;
-        private readonly AccessUrl _accessUrl;
+        private readonly IAccessUrl _accessUrl;
         private readonly Logger _logger;
 
-        public MfaApiRequestExecutor(HttpContextBase context, AccessUrl accessUrl, Logger logger)
+        public MfaApiRequestExecutor(HttpContextBase context, IAccessUrl accessUrl, Logger logger)
         {
             _context = context ?? throw new ArgumentNullException(nameof(context));
             _accessUrl = accessUrl ?? throw new ArgumentNullException(nameof(accessUrl));
             _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         }
 
-        public async Task Execute(string callbackUrl)
+        public void Execute(string callbackUrl)
         {
             var identity = LdapIdentity.Parse(_context.User.Identity.Name);
             try
@@ -41,7 +40,7 @@ namespace MultiFactor.IIS.Adapter.Services
             catch (Exception ex) when (UserNotRegistered(ex))
             {
                 _logger.Warn($"User {identity.RawName} not registered.");
-                var html = await GetInfoHtmlAsync(identity.RawName);
+                var html = GetInfoHtml(identity.RawName);
                 SendPage(_context, html);
             }
             catch (Exception ex)
@@ -51,13 +50,13 @@ namespace MultiFactor.IIS.Adapter.Services
             }
         }
 
-        private async Task<string> GetInfoHtmlAsync(string name)
+        private string GetInfoHtml(string name)
         {
             var adminInfo =_context.GetCacheAdapter().GetSupportAdmin(name);
             if (adminInfo == null || adminInfo.IsEmpty())
             {
                 _logger.Info("Cached admin value is empty");
-                var infoDto = await _accessUrl.Info();
+                var infoDto = _accessUrl.Info();
                 if (!infoDto.IsEmpty())
                 {
                     _logger.Info("Admin value is empty");

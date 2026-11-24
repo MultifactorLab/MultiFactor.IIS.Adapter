@@ -65,7 +65,7 @@ namespace MultiFactor.IIS.Adapter.MsDynamics365
             var valSrv = new TokenValidationService(Logger.IIS);
             var checker = new AuthChecker(context, valSrv, Logger.IIS);
             var isAuthenticatedByMultifactor = checker.IsAuthenticated(user.RawName);
-            if (isAuthenticatedByMultifactor || context.HasApiUnreachableFlag())
+            if (isAuthenticatedByMultifactor || context.HasApiUnreachableFlag(trimName: false))
             {
                 return;
             }

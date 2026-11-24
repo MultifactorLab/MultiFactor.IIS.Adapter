@@ -19,6 +19,12 @@ namespace MultiFactor.IIS.Adapter.Tests
             _currentField.SetValue(null, new Lazy<Configuration>(() => configuration));
         }
 
+        public static void SetCurrent(NameValueCollection appSettings)
+        {
+            var configuration = Load(appSettings);
+            _currentField.SetValue(null, new Lazy<Configuration>(() => configuration));
+        }
+
         public static void ResetCurrent()
         {
             _currentField.SetValue(null, new Lazy<Configuration>(Load));

@@ -56,6 +56,7 @@
     <Compile Include="ConfigurationTests.cs" />
     <Compile Include="HttpContextMockBuilder.cs" />
     <Compile Include="LdapFilterTests.cs" />
+    <Compile Include="MfaApiRequestExecutorTests.cs" />
     <Compile Include="MultiFactorApiClientTests.cs" />
     <Compile Include="NewFunctionalityTests.cs" />
     <Compile Include="PersonalDataTests.cs" />

@@ -92,6 +92,53 @@ namespace MultiFactor.IIS.Adapter.Tests
         }
 
         [Fact]
+        public void AdCache_NewSettingIsZero_ShouldDisableCache()
+        {
+            var settings = Settings();
+            settings[ConfigurationKeys.ActiveDirectoryCacheTimeout] = "0";
+
+            var curr = TestableConfiguration.Reload(settings);
+
+            Assert.Equal(TimeSpan.Zero, curr.ActiveDirectoryCacheTimout);
+        }
+
+        [Fact]
+        public void AdCache_LegacySettingIsZero_ShouldDisableCache()
+        {
+            var settings = Settings();
+            settings[ConfigurationKeys.ActiveDirectory2FAGroupMembershipCacheTimeout] = "0";
+
+            var curr = TestableConfiguration.Reload(settings);
+
+            Assert.Equal(TimeSpan.Zero, curr.ActiveDirectoryCacheTimout);
+        }
+
+        [Fact]
+        public void AdCache_NewSettingIsZeroAndLegacyIsSet_ShouldReturnNewValue()
+        {
+            var settings = Settings();
+            settings[ConfigurationKeys.ActiveDirectoryCacheTimeout] = "0";
+            settings[ConfigurationKeys.ActiveDirectory2FAGroupMembershipCacheTimeout] = "15";
+
+            var curr = TestableConfiguration.Reload(settings);
+
+            Assert.Equal(TimeSpan.Zero, curr.ActiveDirectoryCacheTimout);
+        }
+
+        [Theory]
+        [InlineData("-1")]
+        [InlineData("abc")]
+        public void AdCache_InvalidValue_ShouldReturnDefaultValue(string value)
+        {
+            var settings = Settings();
+            settings[ConfigurationKeys.ActiveDirectoryCacheTimeout] = value;
+
+            var curr = TestableConfiguration.Reload(settings);
+
+            Assert.Equal(TimeSpan.FromMinutes(15), curr.ActiveDirectoryCacheTimout);
+        }
+
+        [Fact]
         public void AdCache_UseNothing_ShouldReturnDefaultValue()
         {
             var curr = TestableConfiguration.Reload(Settings());
